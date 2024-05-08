@@ -1,0 +1,86 @@
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model BTCPayServer.Plugins.TronUSDT.Controllers.ViewTronUSDTStoreOptionsViewModel;
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject BTCPayNetworkProvider BTCPayNetworkProvider;
+@{
+    // ReSharper disable once Razor.LayoutNotResolved
+    Layout = "../Shared/_NavLayout.cshtml";
+    ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
+    ViewData["NavPartialName"] = "../UIStores/_Nav";
+}
+
+
+<partial name="_StatusMessage"/>
+
+
+<h3 class="mb-3">TRON settings</h3>
+<div class="row">
+    <div class="col-md-6">
+        <div asp-validation-summary="All" class="text-danger"></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-8">
+        <div class="form-group">
+            <table class="table table-sm table-responsive-md">
+                <thead>
+                <tr>
+                    <th>Crypto</th>
+                    <th>Receiving addresses</th>
+                    <th class="text-center">Enabled</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>@item.DisplayName</td>
+                        <td>
+                            @{
+                                foreach (var val in item.Addresses)
+                                {
+                                    @val<br/>
+                                }
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (item.Enabled)
+                            {
+                                <span class="text-success fa fa-check"></span>
+                            }
+                            else
+                            {
+                                <span class="text-danger fa fa-times"></span>
+                            }
+                        </td>
+                        <td class="text-right">
+                            <a id="Modify@(item.DisplayName)" asp-action="GetStoreTronUSDTLikePaymentMethod"
+                               asp-route-storeId="@Context.GetRouteValue("storeId")"
+                               asp-route-cryptoCode="@item.CryptoCode">
+                                Modify
+                            </a>
+
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@* @if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin)) *@
+@* { *@
+@*     var chains = BTCPayNetworkProvider.GetAll().OfType<EthereumBTCPayNetwork>().Select(network => network.ChainId).Distinct(); *@
+@*     foreach (var chain in chains) *@
+@*     { *@
+@* *@
+@*         <a asp-action="UpdateChainConfig" asp-controller="EthereumConfig" asp-route-chainId="@chain">Configure Web3 for chain @chain</a> *@
+@*     } *@
+@* } *@
+
+@* ReSharper disable once Razor.SectionNotResolved *@
+
+@section PageFootContent {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

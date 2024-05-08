@@ -1,0 +1,33 @@
+@using BTCPayServer.Plugins.TronUSDT.Configuration
+@using BTCPayServer.Plugins.TronUSDT.Controllers
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using BTCPayServer.Abstractions.Contracts
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject TronUSDTLikeConfiguration TronUSDTLikeConfiguration;
+@inject IScopeProvider ScopeProvider
+@inject UITronUSDTLikeStoreController UITronUSDTLikeStore;
+@{
+    var storeId = ScopeProvider.GetCurrentStoreId();
+}
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems.Any())
+{
+    var store = Context.GetStoreData();
+    var result = await UITronUSDTLikeStore.GetVM(store);
+
+    foreach (var item in result.Items)
+    {
+        var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
+                       nameof(UITronUSDTLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
+                       ViewContext.RouteData.Values.TryGetValue("cryptoCode", out var cryptoCode) && cryptoCode is not null && cryptoCode.ToString() == item.DisplayName;
+        <li class="nav-item">
+            <a class="nav-link @(isActive ? "active" : "")"
+               asp-route-cryptoCode="@item.CryptoCode"
+               asp-route-storeId="@storeId"
+               asp-action="GetStoreTronUSDTLikePaymentMethod"
+               asp-controller="UITronUSDTLikeStore">
+                <span class="me-2 btcpay-status btcpay-status--@(item.Enabled ? "enabled" : "pending")"></span>
+                <span>@item.DisplayName</span>
+            </a>
+        </li>
+    }
+}

@@ -1,0 +1,122 @@
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using BTCPayServer.Client
+@using BTCPayServer.Abstractions.Models
+@model BTCPayServer.Plugins.TronUSDT.Controllers.EditTronUSDTPaymentMethodViewModel;
+
+@{
+    // ReSharper disable once Razor.LayoutNotResolved
+    Layout = "../Shared/_NavLayout.cshtml";
+    ViewData["NavPartialName"] = "../UIStores/_Nav";
+    ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
+}
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="check-circle-fill" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+    </symbol>
+    <symbol id="info-fill" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+    </symbol>
+    <symbol id="exclamation-triangle-fill" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+    </symbol>
+</svg>
+<div class="row">
+    <div class="col-md-8">
+        <form method="post" asp-action="UpdatePaymentConfig"
+              asp-route-storeId="@Context.GetRouteValue("storeId")"
+              asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
+              class="mt-4" enctype="multipart/form-data">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <input asp-for="Address" type="text" class="form-control" placeholder="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL" style="flex: 1 1 14rem">
+                <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address</button>
+            </div>
+        </form>
+        @if (Model.Addresses.Any())
+        {
+            <table class="table table-hover table-responsive-md">
+                <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Balance</th>
+                    <th>Available or used?</th>
+                    <th class="actions-col" permission="@Policies.CanModifyStoreSettings">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="StoreUsersList">
+
+                @foreach (var address in Model.Addresses)
+                {
+                    <tr>
+                        <td>@address.Value</td>
+                        <td>@address.Balance</td>
+                        <td class="text-center">
+                            @if (address.Available)
+                            {
+                                <span class="me-2 btcpay-status btcpay-status--enabled"></span>
+                            }
+                            else
+                            {
+                                <span class="me-2 btcpay-status btcpay-status--disabled"></span>
+                            }
+                        </td>
+                        <td class="actions-col" permission="@Policies.CanModifyStoreSettings">
+                            <form method="post" asp-action="DeleteAddress"
+                                  asp-route-storeId="@Context.GetRouteValue("storeId")"
+                                  asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
+                                  asp-route-address="@address.Value"
+                                  enctype="multipart/form-data">
+
+                                <input type="submit" value="Remove"/>
+
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
+                    <use xlink:href="#exclamation-triangle-fill"/>
+                </svg>
+                <div>
+                    Do not use these addresses to accept payments outside of this store.
+                </div>
+            </div>
+        }
+        else
+        {
+            <br/>
+            <div class="alert alert-info">
+                Please add at least one address before using this payment method.
+            </div>
+        }
+        <partial name="_Confirm" model="@(new ConfirmModel("Remove store user", "This action will prevent the user from accessing this store and its settings. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
+        <form method="post" asp-action="UpdatePaymentConfig"
+              asp-route-storeId="@Context.GetRouteValue("storeId")"
+              asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")" class="mt-4" enctype="multipart/form-data">
+            <div class="form-group">
+                <label asp-for="Enabled"></label>
+                <input asp-for="Enabled" type="checkbox" class="form-check"/>
+                <span asp-validation-for="Enabled" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary" id="SaveButton">Save</button>
+
+                <a class="btn btn-secondary" asp-action="GetStoreTronUSDTLikePaymentMethods"
+                   asp-route-storeId="@Context.GetRouteValue("storeId")"
+                   asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")">
+                    Back to list
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@* ReSharper disable once Razor.SectionNotResolved *@
+
+@section PageFootContent {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
