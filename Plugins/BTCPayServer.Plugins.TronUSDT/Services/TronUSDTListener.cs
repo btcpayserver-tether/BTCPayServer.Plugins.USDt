@@ -202,18 +202,7 @@ public class TronUSDTListener : IHostedService
     {
         _logger.LogInformation(
             $"Invoice {invoice.Id} received payment {payment.Value} {payment.Currency} {payment.Id}");
-
-        var prompt = invoice.GetPaymentPrompt(payment.PaymentMethodId);
-
-        if (prompt != null &&
-            prompt.Activated &&
-            prompt.Destination == payment.Destination &&
-            prompt.Calculate().Due > 0.0m)
-        {
-            await _invoiceActivator.ActivateInvoicePaymentMethod(invoice.Id, payment.PaymentMethodId, true);
-            invoice = await _invoiceRepository.GetInvoice(invoice.Id);
-        }
-
+        
         _eventAggregator.Publish(
             new InvoiceEvent(invoice, InvoiceEvent.ReceivedPayment) { Payment = payment });
     }
