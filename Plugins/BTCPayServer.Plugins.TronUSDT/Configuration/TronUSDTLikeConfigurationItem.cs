@@ -4,6 +4,6 @@ namespace BTCPayServer.Plugins.TronUSDT.Configuration;
 
 public class TronUSDTLikeConfigurationItem
 {
-    public Uri JsonRpcUri { get; set; }
-    public string SmartContractAddress { get; set; }
+    public required Uri JsonRpcUri { get; init; }
+    public required string SmartContractAddress { get; init; }
 }

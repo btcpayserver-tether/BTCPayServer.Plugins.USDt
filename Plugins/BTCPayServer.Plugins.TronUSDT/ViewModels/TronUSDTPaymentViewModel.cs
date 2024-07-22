@@ -4,11 +4,11 @@ namespace BTCPayServer.Plugins.TronUSDT.ViewModels;
 
 public class TronUSDTPaymentViewModel
 {
-    public string Crypto { get; set; }
-    public string Confirmations { get; set; }
-    public string DepositAddress { get; set; }
-    public string Amount { get; set; }
-    public string TransactionId { get; set; }
+    public required string Crypto { get; init; }
+    public required string Confirmations { get; set; }
+    public required string DepositAddress { get; init; }
+    public required string Amount { get; init; }
+    public required string TransactionId { get; init; }
     public DateTimeOffset ReceivedTime { get; set; }
-    public string TransactionLink { get; set; }
+    public required string? TransactionLink { get; init; }
 }

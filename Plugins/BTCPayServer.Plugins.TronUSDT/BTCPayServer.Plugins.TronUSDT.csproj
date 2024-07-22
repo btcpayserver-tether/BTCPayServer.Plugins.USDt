@@ -5,6 +5,7 @@
         <LangVersion>12</LangVersion>
         <Configurations>Release;Altcoins-Debug</Configurations>
         <Platforms>AnyCPU</Platforms>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
     <!-- -->
     <!-- Plugin specific properties -->
@@ -41,7 +42,7 @@
         <PackageReference Include="Nethereum.RPC" Version="4.20.0"/>
         <PackageReference Include="Nethereum.StandardTokenEIP20" Version="4.20.0"/>
         <PackageReference Include="Nethereum.Web3" Version="4.20.0"/>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4"/>
 
     </ItemGroup>
 

@@ -60,7 +60,7 @@ public class TronUSDTRPCProvider
         return Summaries.ContainsKey(cryptoCode) && IsAvailable(Summaries[cryptoCode]);
     }
 
-    private bool IsAvailable(TronUSDTLikeSummary summary)
+    private static bool IsAvailable(TronUSDTLikeSummary summary)
     {
         return summary.Synced &&
                summary.RpcAvailable;
@@ -93,13 +93,13 @@ public class TronUSDTRPCProvider
         }).ToArray());
     }
 
-    public async Task<TronUSDTLikeSummary> UpdateSummary(string cryptoCode)
+    public async Task UpdateSummary(string cryptoCode)
     {
-        if (!WalletRpcClients.TryGetValue(cryptoCode.ToUpperInvariant(), out var walletRpcClient)) return null;
+        if (!WalletRpcClients.TryGetValue(cryptoCode.ToUpperInvariant(), out _)) return;
 
         var listenerState =
             await _settingsRepository.GetSettingAsync<TronUSDTListenerState>(ListenerStateSettingKey(cryptoCode));
-        if (listenerState == null) return null;
+        if (listenerState == null) return;
 
         var summary = new TronUSDTLikeSummary();
         try
@@ -137,8 +137,6 @@ public class TronUSDTRPCProvider
         Summaries.AddOrReplace(cryptoCode, summary);
         if (changed)
             _eventAggregator.Publish(new TronUSDTDaemonStateChange { Summary = summary, CryptoCode = cryptoCode });
-
-        return summary;
     }
 
     public static string ListenerStateSettingKey(string cryptoCode)
@@ -149,8 +147,8 @@ public class TronUSDTRPCProvider
 
     public class TronUSDTDaemonStateChange
     {
-        public string CryptoCode { get; set; }
-        public TronUSDTLikeSummary Summary { get; set; }
+        public required string CryptoCode { get; set; }
+        public required TronUSDTLikeSummary Summary { get; set; }
     }
 
     public class TronUSDTLikeSummary

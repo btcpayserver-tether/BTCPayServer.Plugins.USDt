@@ -13,26 +13,21 @@
     {
         if (!handlers.TryGetValue(payment.PaymentMethodId, out var h) || h is not TronUSDTLikePaymentMethodHandler handler)
             return null;
-        var m = new TronUSDTPaymentViewModel();
         var onChainPaymentData = handler.ParsePaymentDetails(payment.Details);
-        m.Crypto = handler.Network.CryptoCode;
-        m.DepositAddress = payment.Destination;
-        m.Amount = payment.Value.ToString(CultureInfo.InvariantCulture);
         var confirmationCount = onChainPaymentData.ConfirmationCount;
-        // if (confirmationCount >= handler.Network.MaxTrackedConfirmation)
-        //       {
-        // 	m.Confirmations = "At least " + (handler.Network.MaxTrackedConfirmation);
-        //       }
-        //       else
-        //       {
-        //           m.Confirmations = confirmationCount.ToString(CultureInfo.InvariantCulture);
-        //       }
-
-        m.TransactionId = onChainPaymentData.TransactionId;
-        m.ReceivedTime = payment.ReceivedTime;
-        m.TransactionLink = TransactionLinkProviders.GetTransactionLink(m.Crypto, onChainPaymentData.TransactionId);
+        
+        var m = new TronUSDTPaymentViewModel
+        {
+            Crypto = handler.Network.CryptoCode,
+            DepositAddress = payment.Destination,
+            Amount = payment.Value.ToString(CultureInfo.InvariantCulture),
+            TransactionId = onChainPaymentData.TransactionId,
+            ReceivedTime = payment.ReceivedTime,
+            Confirmations = confirmationCount.ToString(CultureInfo.InvariantCulture),
+            TransactionLink = TransactionLinkProviders.GetTransactionLink(handler.Network.CryptoCode, onChainPaymentData.TransactionId)
+        };
         return m;
-    }).Where(c => c != null).ToList();
+    }).Where(c => c != null).Cast<TronUSDTPaymentViewModel>().ToList();
 }
 
 @if (payments.Any())
