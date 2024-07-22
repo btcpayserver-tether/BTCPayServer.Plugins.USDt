@@ -4,5 +4,5 @@ namespace BTCPayServer.Plugins.TronUSDT.Configuration;
 
 public class TronUSDTLikeConfiguration
 {
-    public Dictionary<string, TronUSDTLikeConfigurationItem> TronUSDTLikeConfigurationItems { get; set; } = new();
+    public Dictionary<string, TronUSDTLikeConfigurationItem> TronUSDTLikeConfigurationItems { get; set; } = [];
 }
