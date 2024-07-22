@@ -10,32 +10,22 @@ using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.Plugins.TronUSDT.Services.Payments;
 
-public class TronUSDTLikePaymentMethodHandler : IPaymentMethodHandler
+public class TronUSDTLikePaymentMethodHandler(
+    TronUSDTLikeSpecificBtcPayNetwork network,
+    TronUSDTRPCProvider tronUSDTRpcProvider,
+    InvoiceRepository invoiceRepository,
+    StoreRepository storeRepository) : IPaymentMethodHandler
 {
-    private readonly InvoiceRepository _invoiceRepository;
-    private readonly StoreRepository _storeRepository;
-    private readonly TronUSDTRPCProvider _tronUSDTRpcProvider;
-
-    public TronUSDTLikePaymentMethodHandler(
-        TronUSDTLikeSpecificBtcPayNetwork network,
-        TronUSDTRPCProvider tronUSDTRpcProvider,
-        InvoiceRepository invoiceRepository,
-        StoreRepository storeRepository)
-    {
-        PaymentMethodId = TronUSDTLike.GetPaymentMethodId(network.CryptoCode);
-        Network = network;
-        Serializer = BlobSerializer.CreateSerializer().Serializer;
-        _tronUSDTRpcProvider = tronUSDTRpcProvider;
-        _invoiceRepository = invoiceRepository;
-        _storeRepository = storeRepository;
-    }
+    private readonly InvoiceRepository _invoiceRepository = invoiceRepository;
+    private readonly StoreRepository _storeRepository = storeRepository;
+    private readonly TronUSDTRPCProvider _tronUSDTRpcProvider = tronUSDTRpcProvider;
 
     internal static PaymentType TronUSDTLike => TronUSDTPaymentType.Instance;
-    public TronUSDTLikeSpecificBtcPayNetwork Network { get; }
+    public TronUSDTLikeSpecificBtcPayNetwork Network { get; } = network;
 
-    public JsonSerializer Serializer { get; }
+    public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;
 
-    public PaymentMethodId PaymentMethodId { get; }
+    public PaymentMethodId PaymentMethodId { get; } = TronUSDTLike.GetPaymentMethodId(network.CryptoCode);
 
     public Task BeforeFetchingRates(PaymentMethodContext context)
     {
@@ -51,9 +41,7 @@ public class TronUSDTLikePaymentMethodHandler : IPaymentMethodHandler
 
         var details = new TronUSDTLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
-            .GetOneNotReservedAddress(context.PaymentMethodId, _invoiceRepository);
-        if (availableAddress == null)
-            throw new PaymentMethodUnavailableException("All your TRON adresses are currently waiting payment");
+            .GetOneNotReservedAddress(context.PaymentMethodId, _invoiceRepository) ?? throw new PaymentMethodUnavailableException("All your TRON adresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0; //TODO: vbn
         context.Prompt.Details = JObject.FromObject(details, Serializer);
@@ -66,7 +54,7 @@ public class TronUSDTLikePaymentMethodHandler : IPaymentMethodHandler
 
     object IPaymentMethodHandler.ParsePaymentPromptDetails(JToken details)
     {
-        return ParsePaymentPromptDetails(details);
+        return ParsePaymentPromptDetails(details)!;
     }
 
     object IPaymentMethodHandler.ParsePaymentDetails(JToken details)
@@ -80,7 +68,7 @@ public class TronUSDTLikePaymentMethodHandler : IPaymentMethodHandler
                throw new FormatException($"Invalid {nameof(TronUSDTLikePaymentMethodHandler)}");
     }
 
-    public TronUSDTLikeOnChainPaymentMethodDetails ParsePaymentPromptDetails(JToken details)
+    public TronUSDTLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
     {
         return details.ToObject<TronUSDTLikeOnChainPaymentMethodDetails>(Serializer);
     }

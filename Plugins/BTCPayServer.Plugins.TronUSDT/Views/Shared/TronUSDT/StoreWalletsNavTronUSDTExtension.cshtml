@@ -12,7 +12,7 @@
 @if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems.Any())
 {
     var store = Context.GetStoreData();
-    var result = await UITronUSDTLikeStore.GetVM(store);
+    var result = UITronUSDTLikeStore.GetVM(store);
 
     foreach (var item in result.Items)
     {

@@ -14,7 +14,7 @@ public class TronUSDTLikeSummaryUpdaterHostedService(
     Logs logs)
     : IHostedService
 {
-    private CancellationTokenSource _cts;
+    private CancellationTokenSource? _cts;
 
 
     public Task StartAsync(CancellationToken cancellationToken)

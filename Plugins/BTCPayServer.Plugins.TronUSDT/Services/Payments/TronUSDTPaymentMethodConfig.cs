@@ -9,7 +9,7 @@ namespace BTCPayServer.Plugins.TronUSDT.Services.Payments;
 
 public class TronUSDTPaymentMethodConfig
 {
-    public string[] Addresses { get; set; } = Array.Empty<string>();
+    public string[] Addresses { get; set; } = [];
 
     public async Task<string?> GetOneNotReservedAddress(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)
@@ -18,7 +18,7 @@ public class TronUSDTPaymentMethodConfig
         return Addresses.Except(allReservedAddresses).FirstOrDefault();
     }
 
-    public async Task<string[]> GetReservedAddresses(PaymentMethodId paymentMethodId,
+    public static async Task<string[]> GetReservedAddresses(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)
     {
         var pendingInvoices = (await invoiceRepository.GetPendingInvoices()).Where(i => TronUSDTListener.StatusToTrack.Contains(i.Status));

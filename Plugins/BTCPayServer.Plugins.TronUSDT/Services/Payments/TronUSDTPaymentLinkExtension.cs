@@ -7,17 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.TronUSDT.Services.Payments;
 
-public class TronUSDTPaymentLinkExtension : IPaymentLinkExtension
+public class TronUSDTPaymentLinkExtension(PaymentMethodId paymentMethodId, TronUSDTLikeSpecificBtcPayNetwork network) : IPaymentLinkExtension
 {
-    private readonly TronUSDTLikeSpecificBtcPayNetwork _network;
+    private readonly TronUSDTLikeSpecificBtcPayNetwork _network = network;
 
-    public TronUSDTPaymentLinkExtension(PaymentMethodId paymentMethodId, TronUSDTLikeSpecificBtcPayNetwork network)
-    {
-        PaymentMethodId = paymentMethodId;
-        _network = network;
-    }
-
-    public PaymentMethodId PaymentMethodId { get; }
+    public PaymentMethodId PaymentMethodId { get; } = paymentMethodId;
 
     public string? GetPaymentLink(PaymentPrompt prompt, IUrlHelper? urlHelper)
     {
