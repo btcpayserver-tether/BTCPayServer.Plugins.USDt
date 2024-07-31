@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Abstractions.Extensions;
@@ -9,60 +6,38 @@ using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Client;
 using BTCPayServer.Data;
 using BTCPayServer.Filters;
+using BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels;
 using BTCPayServer.Plugins.TronUSDT.Services;
 using BTCPayServer.Plugins.TronUSDT.Services.Payments;
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Stores;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BTCPayServer.Plugins.TronUSDT.Controllers;
-
-public class ViewTronUSDTStoreOptionsViewModel
-{
-    public List<ViewTronUSDTStoreOptionItemViewModel> Items { get; } = [];
-}
-
-public class ViewTronUSDTStoreOptionItemViewModel
-{
-    public required string DisplayName { get; init; }
-    public bool Enabled { get; init; }
-    public required string CryptoCode { get; init; }
-    public required string[] Addresses { get; set; }
-}
-
-public class EditTronUSDTPaymentMethodViewModel
-{
-    public string? Address { get; init; }
-    public bool Enabled { get; init; }
-
-    public EditTronUSDTPaymentMethodAddressViewModel[] Addresses { get; init; } =
-        [];
-
-    public class EditTronUSDTPaymentMethodAddressViewModel
-    {
-        public required string Value { get; init; }
-        public bool Available { get; init; }
-        public required string Balance { get; init; }
-    }
-}
 
 [Route("stores/{storeId}/tronUSDTlike")]
 [OnlyIfSupport("TronUSDT")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-[Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 public class UITronUSDTLikeStoreController(
-    StoreRepository storeRepository, TronUSDTRPCProvider tronUSDTRpcProvider,
-    PaymentMethodHandlerDictionary handlers, InvoiceRepository invoiceRepository,
+    StoreRepository storeRepository,
+    TronUSDTRPCProvider tronUSDTRpcProvider,
+    PaymentMethodHandlerDictionary handlers,
+    InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
     BTCPayNetworkProvider btcPayNetworkProvider) : Controller
 {
     private StoreData StoreData => HttpContext.GetStoreData();
+
+    [HttpGet]
+    public IActionResult GetStoreTronUSDTLikePaymentMethods()
+    {
+        var vm = GetVM(StoreData);
+
+        return View(vm);
+    }
 
     [NonAction]
     public ViewTronUSDTStoreOptionsViewModel GetVM(StoreData storeData)
@@ -79,7 +54,7 @@ public class UITronUSDTLikeStoreController(
 
             if (matchedPaymentMethod == null)
                 continue;
-            
+
             vm.Items.Add(new ViewTronUSDTStoreOptionItemViewModel
             {
                 CryptoCode = network.CryptoCode,
@@ -91,6 +66,7 @@ public class UITronUSDTLikeStoreController(
 
         return vm;
     }
+
 
     [HttpGet("{cryptoCode}")]
     public async Task<IActionResult> GetStoreTronUSDTLikePaymentMethod(string cryptoCode)
@@ -198,8 +174,11 @@ public class UITronUSDTLikeStoreController(
                 return RedirectToAction("GetStoreTronUSDTLikePaymentMethod", new { storeId = store.Id, cryptoCode });
             }
 
-            currentPaymentMethodConfig.Addresses = [.. currentPaymentMethodConfig.Addresses
-, .. new[] { viewModel.Address }];
+            currentPaymentMethodConfig.Addresses =
+            [
+                .. currentPaymentMethodConfig.Addresses,
+                .. new[] { viewModel.Address }
+            ];
 
             TempData.SetStatusMessageModel(new StatusMessageModel
             {

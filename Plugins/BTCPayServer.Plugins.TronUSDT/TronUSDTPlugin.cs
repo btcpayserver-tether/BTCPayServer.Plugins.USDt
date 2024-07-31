@@ -10,7 +10,6 @@ using BTCPayServer.Payments.Bitcoin;
 using BTCPayServer.Plugins.TronUSDT.Configuration;
 using BTCPayServer.Plugins.TronUSDT.Services;
 using BTCPayServer.Plugins.TronUSDT.Services.Payments;
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NBitcoin;
@@ -72,7 +71,8 @@ public class TronUSDTPlugin : BaseBTCPayServerPlugin
                 network, pmi));
 
         // For future usages (multiple TRC20)
-        //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDT/StoreNavTronUSDTExtension", "store-nav"));
+        //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDT/StoreNavTronUSDTExtension", "store-integrations-nav"));
+        services.AddSingleton<IUIExtension>(new UIExtension("TronUSDT/ServerNavTronUSDTExtension", "server-nav"));
         services.AddSingleton<IUIExtension>(new UIExtension("TronUSDT/StoreWalletsNavTronUSDTExtension", "store-wallets-nav"));
         services.AddSingleton<IUIExtension>(new UIExtension("TronUSDT/ViewTronUSDTLikePaymentData", "store-invoices-payments"));
         services.AddSingleton<ISyncSummaryProvider, TronUSDTSyncSummaryProvider>();
@@ -83,37 +83,63 @@ public class TronUSDTPlugin : BaseBTCPayServerPlugin
     {
         var configuration = serviceProvider.GetService<IConfiguration>();
         var btcPayNetworkProvider = serviceProvider.GetService<BTCPayNetworkProvider>();
+        var settingsRepository = serviceProvider.GetService<ISettingsRepository>();
         if (btcPayNetworkProvider == null) throw new InvalidOperationException("NetworkProvider is not provided.");
-        
+
         var result = new TronUSDTLikeConfiguration();
 
         var supportedNetworks = btcPayNetworkProvider.GetAll().OfType<TronUSDTLikeSpecificBtcPayNetwork>();
 
         foreach (var tronNetwork in supportedNetworks)
         {
-            var jsonRpcUri = configuration.GetOrDefault<Uri?>($"{tronNetwork.CryptoCode}_JSONRPC_URI", null) ??
-                             (chainName == ChainName.Mainnet ? new Uri("https://api.trongrid.io/jsonrpc") : new Uri("https://nile.trongrid.io/jsonrpc"));
+            var serverSettings = settingsRepository.GetSettingAsync<TronUSDTLikeServerSettings>(
+                ServerSettingsKey(tronNetwork.CryptoCode)).Result;
 
-            // On testnet, we use a different smart contract address,
-            // TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj seems not the official one (TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf), but at least
-            // there is a faucet for it: https://nileex.io/join/getJoinPage
-            var smartContractAddress =
-                configuration.GetOrDefault<string?>($"{tronNetwork.CryptoCode}_SMARTCONTRACT_ADDRESS", null) ??
-                (chainName == ChainName.Mainnet
-                    ? "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
-                    : "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj");
+            var configurationItem = GetConfigurationItem(chainName, serverSettings, configuration, tronNetwork);
 
-            if (jsonRpcUri == null || smartContractAddress == null)
-                throw new ConfigException($"{tronNetwork.CryptoCode} is misconfigured");
-
-            result.TronUSDTLikeConfigurationItems.Add(tronNetwork.CryptoCode,
-                new TronUSDTLikeConfigurationItem
-                {
-                    JsonRpcUri = jsonRpcUri,
-                    SmartContractAddress = smartContractAddress
-                });
+            result.TronUSDTLikeConfigurationItems.Add(tronNetwork.CryptoCode, configurationItem);
         }
 
         return result;
+    }
+
+    public static TronUSDTLikeConfigurationItem GetConfigurationItem(ChainName chainName, TronUSDTLikeServerSettings? serverSettings,
+        IConfiguration? configuration, TronUSDTLikeSpecificBtcPayNetwork tronNetwork)
+    {
+        var jsonRpcUri = serverSettings?.JsonRpcUri ?? GetDefaultJsonRpcUri(chainName, configuration, tronNetwork);
+        var smartContractAddress = serverSettings?.SmartContractAddress ?? GetDefaultSmartContractAddress(chainName, configuration, tronNetwork);
+
+        if (jsonRpcUri == null || smartContractAddress == null)
+            throw new ConfigException($"{tronNetwork.CryptoCode} is misconfigured");
+
+        var configurationItem = new TronUSDTLikeConfigurationItem
+        {
+            JsonRpcUri = jsonRpcUri,
+            SmartContractAddress = smartContractAddress
+        };
+        return configurationItem;
+    }
+
+    public static string? ServerSettingsKey(string cryptoCode)
+    {
+        return $"{cryptoCode}_SERVER_SETTINGS";
+    }
+
+    public static Uri GetDefaultJsonRpcUri(ChainName chainName, IConfiguration? configuration, TronUSDTLikeSpecificBtcPayNetwork tronNetwork)
+    {
+        return configuration.GetOrDefault<Uri?>($"{tronNetwork.CryptoCode}_JSONRPC_URI", null) ??
+               (chainName == ChainName.Mainnet ? new Uri("https://api.trongrid.io/jsonrpc") : new Uri("https://nile.trongrid.io/jsonrpc"));
+    }
+
+    public static string GetDefaultSmartContractAddress(ChainName chainName, IConfiguration? configuration, TronUSDTLikeSpecificBtcPayNetwork tronNetwork)
+    {
+
+        // On testnet, we use a different smart contract address,
+        // TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj seems not the official one (TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf), but at least
+        // there is a faucet for it: https://nileex.io/join/getJoinPage
+        return configuration.GetOrDefault<string?>($"{tronNetwork.CryptoCode}_SMARTCONTRACT_ADDRESS", null) ??
+               (chainName == ChainName.Mainnet
+                   ? "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+                   : "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj");
     }
 }

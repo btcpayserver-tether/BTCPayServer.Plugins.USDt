@@ -21,7 +21,10 @@ public class TronUSDTLikeSummaryUpdaterHostedService(
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         foreach (var tronUSDTLikeConfigurationItem in tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems)
+        {
             _ = StartLoop(_cts.Token, tronUSDTLikeConfigurationItem.Key);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -41,9 +44,9 @@ public class TronUSDTLikeSummaryUpdaterHostedService(
                 {
                     await tronUSDTRpcProvider.UpdateSummary(cryptoCode);
                     if (tronUSDTRpcProvider.IsAvailable(cryptoCode))
-                        await Task.Delay(TimeSpan.FromSeconds(30), cancellation);
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellation);
                     else
-                        await Task.Delay(TimeSpan.FromSeconds(10), cancellation);
+                        await Task.Delay(TimeSpan.FromSeconds(2), cancellation);
                 }
                 catch (Exception ex) when (!cancellation.IsCancellationRequested)
                 {

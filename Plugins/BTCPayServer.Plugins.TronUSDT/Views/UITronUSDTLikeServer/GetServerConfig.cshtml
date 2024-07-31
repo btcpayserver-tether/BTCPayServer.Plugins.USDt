@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels.TronUSDTLikeServerConfigViewModel;
+@{
+    ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
+    ViewData["NavPartialName"] = "../UIStores/_Nav";
+}
+
+<form method="post" asp-action="UpdatePaymentConfig" enctype="multipart/form-data">
+    <div class="sticky-header">
+        <h2>Tron integration settings</h2>
+        <button id="SaveButton" type="submit" class="btn btn-primary" name="command" value="Save">Save</button>
+    </div>
+    <partial name="_StatusMessage"/>
+
+    @if (!ViewContext.ModelState.IsValid)
+    {
+        <div asp-validation-summary="All"></div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="form-group" data-default="">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <label asp-for="SmartContractAddress" class="form-label">Smart contract address</label>
+                </div>
+                <input asp-for="SmartContractAddress" type="text" class="form-control" placeholder="@ViewData.Model.DefaultSmartContractAddress" style="flex: 1 1 14rem">
+            </div>
+            <div class="form-group" data-default="">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <label asp-for="JsonRpcUri" class="form-label">JsonRpc Uri</label>
+                </div>
+                <input asp-for="JsonRpcUri" type="text" class="form-control" placeholder="@ViewData.Model.DefaultJsonRpcUri" style="flex: 1 1 14rem">
+            </div>
+        </div>
+    </div>
+</form>
+
+@* ReSharper disable once Razor.SectionNotResolved *@
+@section PageFootContent {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

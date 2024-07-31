@@ -11,7 +11,6 @@ using BTCPayServer.Data;
 using BTCPayServer.Events;
 using BTCPayServer.Plugins.TronUSDT.Configuration;
 using BTCPayServer.Plugins.TronUSDT.Services.Payments;
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
 using BTCPayServer.Services.Invoices;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,8 @@ using Nethereum.RPC.Eth.DTOs;
 
 namespace BTCPayServer.Plugins.TronUSDT.Services;
 
-public class TronUSDTListener(InvoiceRepository invoiceRepository,
+public class TronUSDTListener(
+    InvoiceRepository invoiceRepository,
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     TronUSDTRPCProvider tronUSDTRpcProvider,
@@ -158,7 +158,6 @@ public class TronUSDTListener(InvoiceRepository invoiceRepository,
         return Task.CompletedTask;
     }
 
-
     private TronUSDTLikeConfigurationItem GetConfig(string cryptoCode)
     {
         return tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems[cryptoCode];
@@ -196,12 +195,11 @@ public class TronUSDTListener(InvoiceRepository invoiceRepository,
             transferEvent.CreateFilterInput(new BlockParameter(block.Number),
                 new BlockParameter(block.Number)));
 
-
         var matches = changes
-            .Where(t => t.Log.Removed == false && TronUSDTAddressHelper.HexToBase58(t.Log.Address).Equals(GetConfig(cryptoCode).SmartContractAddress, StringComparison.InvariantCultureIgnoreCase))
+            .Where(t => t.Log.Removed == false && TronUSDTAddressHelper.HexToBase58(t.Log.Address)
+                .Equals(GetConfig(cryptoCode).SmartContractAddress, StringComparison.InvariantCultureIgnoreCase))
             .Where(t => accountToAddressQuery.ContainsKey(TronUSDTAddressHelper.HexToBase58(t.Event.To)
                 .ToLowerInvariant()));
-
 
         foreach (var t in matches)
         {
@@ -217,18 +215,18 @@ public class TronUSDTListener(InvoiceRepository invoiceRepository,
         var updatedPaymentEntities =
             new BlockingCollection<(PaymentEntity Payment, InvoiceEntity invoice)>();
         foreach (var invoice in invoices)
-            foreach (var payment in GetAllTronUSDTLikePayments(invoice, cryptoCode)
-                         .Where(p => p.Status == PaymentStatus.Processing))
-            {
-                var paymentData = handler.ParsePaymentDetails(payment.Details);
+        foreach (var payment in GetAllTronUSDTLikePayments(invoice, cryptoCode)
+                     .Where(p => p.Status == PaymentStatus.Processing))
+        {
+            var paymentData = handler.ParsePaymentDetails(payment.Details);
 
-                paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
-                payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
-                    ? PaymentStatus.Settled
-                    : PaymentStatus.Processing;
-                payment.SetDetails(handler, paymentData);
-                updatedPaymentEntities.Add((payment, invoice));
-            }
+            paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
+            payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
+                ? PaymentStatus.Settled
+                : PaymentStatus.Processing;
+            payment.SetDetails(handler, paymentData);
+            updatedPaymentEntities.Add((payment, invoice));
+        }
 
         await paymentService.UpdatePayments(updatedPaymentEntities.Select(tuple => tuple.Payment).ToList());
         foreach (var valueTuples in updatedPaymentEntities.GroupBy(entity => entity.invoice))
@@ -283,7 +281,7 @@ public class TronUSDTListener(InvoiceRepository invoiceRepository,
     private async Task UpdateAnyPendingTronUSDTLikePayment(string cryptoCode, BlockWithTransactions block)
     {
         var invoices = (await invoiceRepository.GetPendingInvoices()).Where(i => StatusToTrack.Contains(i.Status)).ToArray();
-        if (!invoices.Any())
+        if (invoices.Length == 0)
             return;
 
         var paymentMethodId = TronUSDTPaymentType.Instance.GetPaymentMethodId(cryptoCode);

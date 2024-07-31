@@ -22,7 +22,7 @@ public class TronUSDTLikePaymentData : CryptoPaymentData
         return null;
 #pragma warning restore CS8603 // Possible null reference return.
     }
-    
+
     public decimal GetValue()
     {
         return decimal.Parse(Web3.Convert.FromWeiToBigDecimal(Amount, 6).ToString(), //todo vbn fix constant

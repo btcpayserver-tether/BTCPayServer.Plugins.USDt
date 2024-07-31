@@ -1,16 +1,10 @@
 @using Microsoft.AspNetCore.Mvc.TagHelpers
-@model BTCPayServer.Plugins.TronUSDT.Controllers.ViewTronUSDTStoreOptionsViewModel;
-@inject SignInManager<ApplicationUser> SignInManager;
-@inject BTCPayNetworkProvider BTCPayNetworkProvider;
+@model BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels.ViewTronUSDTStoreOptionsViewModel;
 @{
     // ReSharper disable once Razor.LayoutNotResolved
     ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
     ViewData["NavPartialName"] = "../UIStores/_Nav";
 }
-
-
-<partial name="_StatusMessage"/>
-
 
 <h3 class="mb-3">TRON settings</h3>
 <div class="row">
@@ -18,6 +12,7 @@
         <div asp-validation-summary="All" class="text-danger"></div>
     </div>
 </div>
+<partial name="_StatusMessage"/>
 <div class="row">
     <div class="col-md-8">
         <div class="form-group">
@@ -68,18 +63,8 @@
         </div>
     </div>
 </div>
-@* @if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin)) *@
-@* { *@
-@*     var chains = BTCPayNetworkProvider.GetAll().OfType<EthereumBTCPayNetwork>().Select(network => network.ChainId).Distinct(); *@
-@*     foreach (var chain in chains) *@
-@*     { *@
-@* *@
-@*         <a asp-action="UpdateChainConfig" asp-controller="EthereumConfig" asp-route-chainId="@chain">Configure Web3 for chain @chain</a> *@
-@*     } *@
-@* } *@
 
 @* ReSharper disable once Razor.SectionNotResolved *@
-
 @section PageFootContent {
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }

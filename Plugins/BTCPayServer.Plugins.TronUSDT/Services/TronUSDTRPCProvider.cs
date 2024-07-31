@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Numerics;
 using System.Threading.Tasks;
 using BTCPayServer.Plugins.TronUSDT.Configuration;
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
+using BTCPayServer.Plugins.TronUSDT.Services.Events;
 using BTCPayServer.Services;
 using NBitcoin;
 using Nethereum.JsonRpc.Client;
@@ -15,19 +15,16 @@ using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.TronUSDT.Services;
 
-public class TronUSDTListenerState
-{
-    public BigInteger LastBlockHeight { get; set; }
-}
-
 public class TronUSDTRPCProvider
 {
     private readonly EventAggregator _eventAggregator;
     private readonly BTCPayNetworkProvider _networkProvider;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly SettingsRepository _settingsRepository;
 
     private readonly TronUSDTLikeConfiguration _tronUSDTLikeConfiguration;
-    public readonly ImmutableDictionary<string, RpcClient> WalletRpcClients;
+    private ImmutableDictionary<string, RpcClient> _walletRpcClients;
+    private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
 
     public TronUSDTRPCProvider(TronUSDTLikeConfiguration tronUSDTLikeConfiguration,
         EventAggregator eventAggregator,
@@ -39,17 +36,33 @@ public class TronUSDTRPCProvider
         _eventAggregator = eventAggregator;
         _settingsRepository = settingsRepository;
         _networkProvider = networkProvider;
+        _httpClientFactory = httpClientFactory;
 
-        WalletRpcClients = _tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems.ToImmutableDictionary(
-            pair => pair.Key,
-            pair =>
-            {
-                var httpClient = httpClientFactory.CreateClient($"{pair.Key}client");
-                //System.Net.WebRequest.DefaultWebProxy = new System.Net.WebProxy("127.0.0.1", 8888);
-                //httpClient.DefaultRequestHeaders.Add("TRON-PRO-API-KEY", "a960115e-8f38-4893-9469-65c384b0a921");
-                var rpcClient = new RpcClient(pair.Value.JsonRpcUri, httpClient);
-                return rpcClient;
-            });
+        _eventAggregatorSubscription = _eventAggregator.Subscribe<TronUSDTSettingsChanged>(_ => LoadClientsFromConfiguration());
+        LoadClientsFromConfiguration();
+    }
+
+    private void LoadClientsFromConfiguration()
+    {
+        lock (this)
+        {
+            _walletRpcClients = _tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems.ToImmutableDictionary(
+                pair => pair.Key,
+                pair =>
+                {
+                    var httpClient = _httpClientFactory.CreateClient($"{pair.Key}client");
+                    var rpcClient = new RpcClient(pair.Value.JsonRpcUri, httpClient);
+                    return rpcClient;
+                });
+        }
+    }
+
+    public Web3 GetWeb3Client(string cryptoCode)
+    {
+        lock (this)
+        {
+            return new Web3(_walletRpcClients[cryptoCode]);
+        }
     }
 
     public ConcurrentDictionary<string, TronUSDTLikeSummary> Summaries { get; } = new();
@@ -62,13 +75,7 @@ public class TronUSDTRPCProvider
 
     private static bool IsAvailable(TronUSDTLikeSummary summary)
     {
-        return summary.Synced &&
-               summary.RpcAvailable;
-    }
-
-    public Web3 GetWeb3Client(string cryptoCode)
-    {
-        return new Web3(WalletRpcClients[cryptoCode]);
+        return summary is { Synced: true, RpcAvailable: true };
     }
 
     public Task<(string, decimal)[]> GetBalances(string cryptoCode, string[] addresses)
@@ -95,7 +102,7 @@ public class TronUSDTRPCProvider
 
     public async Task UpdateSummary(string cryptoCode)
     {
-        if (!WalletRpcClients.TryGetValue(cryptoCode.ToUpperInvariant(), out _)) return;
+        if (!_walletRpcClients.TryGetValue(cryptoCode.ToUpperInvariant(), out _)) return;
 
         var listenerState =
             await _settingsRepository.GetSettingAsync<TronUSDTListenerState>(ListenerStateSettingKey(cryptoCode));
@@ -136,20 +143,10 @@ public class TronUSDTRPCProvider
 
         Summaries.AddOrReplace(cryptoCode, summary);
         if (changed)
-            _eventAggregator.Publish(new TronUSDTDaemonStateChange { Summary = summary, CryptoCode = cryptoCode });
+            _eventAggregator.Publish(new TronUSDTDaemonStateChanged { Summary = summary, CryptoCode = cryptoCode });
     }
 
-    public static string ListenerStateSettingKey(string cryptoCode)
-    {
-        return "TRONUSDT_LISTENER_" + cryptoCode;
-    }
-
-
-    public class TronUSDTDaemonStateChange
-    {
-        public required string CryptoCode { get; set; }
-        public required TronUSDTLikeSummary Summary { get; set; }
-    }
+    public static string ListenerStateSettingKey(string cryptoCode) => "TRONUSDT_LISTENER_" + cryptoCode;
 
     public class TronUSDTLikeSummary
     {
