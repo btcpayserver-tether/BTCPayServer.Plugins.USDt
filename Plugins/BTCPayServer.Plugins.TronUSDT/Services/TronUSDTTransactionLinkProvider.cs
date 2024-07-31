@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using BTCPayServer.Services;
 
-namespace BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
+namespace BTCPayServer.Plugins.TronUSDT.Services;
 
 internal class TronUSDTTransactionLinkProvider(string blockExplorerLink) : DefaultTransactionLinkProvider(blockExplorerLink)
 {

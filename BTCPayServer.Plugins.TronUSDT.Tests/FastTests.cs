@@ -1,4 +1,4 @@
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
+using BTCPayServer.Plugins.TronUSDT.Services;
 using Xunit;
 using Xunit.Abstractions;
 

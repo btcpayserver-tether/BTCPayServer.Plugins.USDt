@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using BTCPayServer.Payments;
-using BTCPayServer.Plugins.TronUSDT.Tron.TronUSDT;
 using BTCPayServer.Services.Invoices;
 using Microsoft.AspNetCore.Mvc;
 
