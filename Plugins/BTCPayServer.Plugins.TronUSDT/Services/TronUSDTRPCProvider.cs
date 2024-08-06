@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
@@ -23,7 +24,7 @@ public class TronUSDTRPCProvider
     private readonly SettingsRepository _settingsRepository;
 
     private readonly TronUSDTLikeConfiguration _tronUSDTLikeConfiguration;
-    private ImmutableDictionary<string, RpcClient> _walletRpcClients;
+    private ImmutableDictionary<string, RpcClient>? _walletRpcClients;
     private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
 
     public TronUSDTRPCProvider(TronUSDTLikeConfiguration tronUSDTLikeConfiguration,
@@ -78,26 +79,36 @@ public class TronUSDTRPCProvider
         return summary is { Synced: true, RpcAvailable: true };
     }
 
-    public Task<(string, decimal)[]> GetBalances(string cryptoCode, string[] addresses)
+    public async Task<(string, decimal?)[]> GetBalances(string cryptoCode, IEnumerable<string> addresses)
     {
         var configuration = _tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems[cryptoCode];
 
         var tokenService = new StandardTokenService(GetWeb3Client(cryptoCode),
             TronUSDTAddressHelper.Base58ToHex(configuration.SmartContractAddress));
 
-        var tokens = addresses.Select(TronUSDTAddressHelper.Base58ToHex).Select(a =>
-            (TronUSDTAddressHelper.HexToBase58(a), tokenService.BalanceOfQueryAsync(a).Result)).ToArray();
+        var hexAddresses = addresses.Select(TronUSDTAddressHelper.Base58ToHex);
         var divisibility = _networkProvider.GetNetwork(cryptoCode).Divisibility;
-
-        return Task.FromResult(tokens.Select(r =>
+        
+        List<(string, decimal?)> results = [];
+        foreach (var address in hexAddresses)
         {
-            var divisor = BigInteger.Pow(10, divisibility);
-            var quotient = r.Result / divisor;
-            var remainder = r.Result % divisor;
-            var fractionalPart = (decimal)remainder / (decimal)divisor;
+            var base58Address = TronUSDTAddressHelper.HexToBase58(address);
+            try
+            {
+                var balanceResult = await tokenService.BalanceOfQueryAsync(address);
+                var divisor = BigInteger.Pow(10, divisibility);
+                var quotient = balanceResult / divisor;
+                var remainder = balanceResult % divisor;
+                var fractionalPart = (decimal)remainder / (decimal)divisor;
+                results.Add((base58Address, (decimal)quotient + fractionalPart));
+            }
+            catch (Exception)
+            {
+                results.Add((base58Address, null));
+            }
+        }
 
-            return (r.Item1, (decimal)quotient + fractionalPart);
-        }).ToArray());
+        return results.ToArray();
     }
 
     public async Task UpdateSummary(string cryptoCode)

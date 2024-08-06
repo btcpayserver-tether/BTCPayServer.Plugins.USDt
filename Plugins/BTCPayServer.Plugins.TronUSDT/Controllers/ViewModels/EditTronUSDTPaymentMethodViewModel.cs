@@ -1,7 +1,10 @@
-﻿namespace BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels;
+﻿using BTCPayServer.Plugins.TronUSDT.Configuration;
+
+namespace BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels;
 
 public class EditTronUSDTPaymentMethodViewModel
 {
+    [TronBase58]
     public string? Address { get; init; }
     public bool Enabled { get; init; }
 

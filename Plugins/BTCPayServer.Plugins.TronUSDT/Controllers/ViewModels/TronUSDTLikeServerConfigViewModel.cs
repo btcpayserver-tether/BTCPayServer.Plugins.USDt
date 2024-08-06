@@ -1,12 +1,17 @@
 using System;
+using System.ComponentModel.DataAnnotations;
+using BTCPayServer.Plugins.TronUSDT.Configuration;
+using BTCPayServer.Validation;
 
 namespace BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels;
 
 public class TronUSDTLikeServerConfigViewModel
 {
+    [TronBase58]
     public string? SmartContractAddress { get; init; }
-    public required string DefaultSmartContractAddress { get; init; }
+    public string? DefaultSmartContractAddress { get; set; }
 
+    [Uri]
     public string? JsonRpcUri { get; init; }
-    public required Uri DefaultJsonRpcUri { get; init; }
+    public Uri? DefaultJsonRpcUri { get; set; }
 }

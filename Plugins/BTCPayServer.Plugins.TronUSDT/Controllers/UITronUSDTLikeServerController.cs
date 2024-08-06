@@ -47,12 +47,19 @@ public class UITronUSDTLikeServerController(
     }
 
 
-    [DisableRequestSizeLimit]
     [HttpPost]
-    public async Task<IActionResult> UpdatePaymentConfig(TronUSDTLikeServerConfigViewModel viewModel)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GetServerConfig(TronUSDTLikeServerConfigViewModel viewModel)
     {
         var network = btcPayNetworkProvider.GetAll().OfType<TronUSDTLikeSpecificBtcPayNetwork>().SingleOrDefault();
         if (network is null) return NotFound();
+        
+        if (!ModelState.IsValid)
+        {
+            viewModel.DefaultSmartContractAddress = TronUSDTPlugin.GetDefaultSmartContractAddress(btcPayNetworkProvider.NetworkType, configuration, network);
+            viewModel.DefaultJsonRpcUri = TronUSDTPlugin.GetDefaultJsonRpcUri(btcPayNetworkProvider.NetworkType, configuration, network);
+            return View(viewModel);
+        }
 
         TronUSDTLikeServerSettings serverSettings = new TronUSDTLikeServerSettings()
         {

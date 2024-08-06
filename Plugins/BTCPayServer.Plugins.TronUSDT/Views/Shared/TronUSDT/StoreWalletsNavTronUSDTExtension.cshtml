@@ -2,10 +2,12 @@
 @using BTCPayServer.Plugins.TronUSDT.Controllers
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Plugins.TronUSDT.Services
 @inject SignInManager<ApplicationUser> SignInManager;
 @inject TronUSDTLikeConfiguration TronUSDTLikeConfiguration;
 @inject IScopeProvider ScopeProvider
 @inject UITronUSDTLikeStoreController UITronUSDTLikeStore;
+@inject TronUSDTRPCProvider TronUSDTRPCProvider;
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
 }
@@ -16,6 +18,7 @@
 
     foreach (var item in result.Items)
     {
+        var isAvailable = TronUSDTRPCProvider.IsAvailable(item.CryptoCode);
         var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
                        nameof(UITronUSDTLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
                        ViewContext.RouteData.Values.TryGetValue("cryptoCode", out var cryptoCode) && cryptoCode is not null && cryptoCode.ToString() == item.DisplayName;
@@ -25,7 +28,7 @@
                asp-route-storeId="@storeId"
                asp-action="GetStoreTronUSDTLikePaymentMethod"
                asp-controller="UITronUSDTLikeStore">
-                <span class="me-2 btcpay-status btcpay-status--@(item.Enabled ? "enabled" : "pending")"></span>
+                <span class="me-2 btcpay-status btcpay-status--@(item.Enabled ? isAvailable ? "enabled" : "disabled" : "pending")"></span>
                 <span>@item.DisplayName</span>
             </a>
         </li>

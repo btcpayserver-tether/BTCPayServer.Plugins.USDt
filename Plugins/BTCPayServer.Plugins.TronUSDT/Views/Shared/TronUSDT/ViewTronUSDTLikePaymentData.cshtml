@@ -15,7 +15,7 @@
             return null;
         var onChainPaymentData = handler.ParsePaymentDetails(payment.Details);
         var confirmationCount = onChainPaymentData.ConfirmationCount;
-        
+
         var m = new TronUSDTPaymentViewModel
         {
             Crypto = handler.Network.CryptoCode,

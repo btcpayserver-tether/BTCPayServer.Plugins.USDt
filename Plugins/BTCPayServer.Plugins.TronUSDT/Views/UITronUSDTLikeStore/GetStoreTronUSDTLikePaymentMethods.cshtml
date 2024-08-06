@@ -1,14 +1,14 @@
 @model BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels.ViewTronUSDTStoreOptionsViewModel;
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
+    ViewData.SetActivePage("TRON USD\u20ae payment settings", "TRON USD\u20ae payment settings", "TRON USD\u20ae payment settings");
     ViewData["NavPartialName"] = "../UIStores/_Nav";
 }
 
-<h3 class="mb-3">TRON settings</h3>
+<h3 class="mb-3">TRON USD₮ payment settings</h3>
 <div class="row">
     <div class="col-md-6">
-        <div asp-validation-summary="All" class="text-danger"></div>
+        <div asp-validation-summary="All"></div>
     </div>
 </div>
 <partial name="_StatusMessage"/>

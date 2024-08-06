@@ -5,10 +5,15 @@
 @{
     // ReSharper disable once Razor.LayoutNotResolved
     ViewData["NavPartialName"] = "../UIStores/_Nav";
-    ViewData.SetActivePage("TronUSDT Settings", "TronUSDT Settings", "TronUSDT Settings");
+    ViewData.SetActivePage("TRON USD\u20ae payment settings", "TRON USD\u20ae payment settings", "TRON USD\u20ae payment settings");
 }
-<h3 class="mb-3">TRON USDT settings</h3>
-
+<h3 class="mb-3">TRON USD₮ payment settings</h3>
+<div class="row">
+    <div class="col-md-6">
+        <div asp-validation-summary="All"></div>
+    </div>
+</div>
+<partial name="_StatusMessage"/>
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
     <symbol id="check-circle-fill" fill="currentColor" viewBox="0 0 16 16">
         <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
@@ -22,7 +27,7 @@
 </svg>
 <div class="row">
     <div class="col-md-8">
-        <form method="post" asp-action="UpdatePaymentConfig"
+        <form method="post" 
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
               class="mt-4" enctype="multipart/form-data">
@@ -38,7 +43,7 @@
                 <tr>
                     <th>Address</th>
                     <th>Balance</th>
-                    <th>Available or used?</th>
+                    <th><span data-bs-toggle="tooltip" data-bs-placement="top" title="Addresses are attached to pending payments and free after settlement.">Free or used? <vc:icon symbol="info"/></span></th>
                     <th class="actions-col" permission="@Policies.CanModifyStoreSettings">Actions</th>
                 </tr>
                 </thead>
@@ -59,22 +64,31 @@
                                 <span class="me-2 btcpay-status btcpay-status--disabled"></span>
                             }
                         </td>
+                        
                         <td class="actions-col" permission="@Policies.CanModifyStoreSettings">
                             <form method="post" asp-action="DeleteAddress"
                                   asp-route-storeId="@Context.GetRouteValue("storeId")"
                                   asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
                                   asp-route-address="@address.Value"
                                   enctype="multipart/form-data">
-
-                                <input type="submit" value="Remove"/>
-
+                                <input class="btn btn-link p-0" type="submit" value="Remove"/>
                             </form>
                         </td>
                     </tr>
                 }
                 </tbody>
             </table>
-
+            if (Model.Addresses.Any(a => a.Balance == "N/A"))
+            {
+                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                    <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
+                        <use xlink:href="#exclamation-triangle-fill"/>
+                    </svg>
+                    <div>
+                        Unable to retrieve balances for addresses. Please verify your node connection.
+                    </div>
+                </div>
+            }   
             <div class="alert alert-warning d-flex align-items-center" role="alert">
                 <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
                     <use xlink:href="#exclamation-triangle-fill"/>
@@ -92,14 +106,15 @@
             </div>
         }
         <partial name="_Confirm" model="@(new ConfirmModel("Remove store user", "This action will prevent the user from accessing this store and its settings. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
-        <form method="post" asp-action="UpdatePaymentConfig"
+        <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")" class="mt-4" enctype="multipart/form-data">
-            <div class="form-group">
-                <label asp-for="Enabled"></label>
-                <input asp-for="Enabled" type="checkbox" class="form-check"/>
-                <span asp-validation-for="Enabled" class="text-danger"></span>
-            </div>
+
+                        <div class="d-flex mb-3">
+                            <input asp-for="Enabled" type="checkbox" class="btcpay-toggle me-3" />
+                            <label asp-for="Enabled" class="form-check-label"></label>
+                            <span asp-validation-for="Enabled" class="text-danger"></span>
+                        </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary" id="SaveButton">Save</button>
             </div>

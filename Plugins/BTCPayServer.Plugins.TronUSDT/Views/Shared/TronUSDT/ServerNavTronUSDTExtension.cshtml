@@ -11,13 +11,12 @@
     var storeId = ScopeProvider.GetCurrentStoreId();
     var isSettingsActive = ViewData.IsActiveCategory(typeof(ServerNavPages)) && !ViewData.IsActivePage([ServerNavPages.Plugins]);
     var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
-                   nameof(UITronUSDTLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
+                   nameof(UITronUSDTLikeServerController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
 }
 
 @if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems.Any()) || isActive)
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
-        <a asp-controller="UITronUSDTLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">Tron configuration</a>
+        <a asp-controller="UITronUSDTLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">Tron USD₮</a>
     </li>
-              
 }

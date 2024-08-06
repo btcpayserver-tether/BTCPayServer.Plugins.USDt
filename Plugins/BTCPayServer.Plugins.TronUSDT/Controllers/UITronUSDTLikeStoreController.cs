@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Abstractions.Extensions;
@@ -98,7 +99,9 @@ public class UITronUSDTLikeStoreController(
                 new EditTronUSDTPaymentMethodViewModel.EditTronUSDTPaymentMethodAddressViewModel
                 {
                     Available = reservedAddresses.Contains(s) == false,
-                    Balance = displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2, "USDT"),
+                    Balance = balances.Single(x => x.Item1 == s).Item2 == null
+                        ? "N/A"
+                        : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae"),
                     Value = s
                 }).ToArray()
         });
@@ -135,11 +138,16 @@ public class UITronUSDTLikeStoreController(
 
     [HttpPost("{cryptoCode}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> UpdatePaymentConfig(EditTronUSDTPaymentMethodViewModel viewModel,
+    public async Task<IActionResult> GetStoreTronUSDTLikePaymentMethod(EditTronUSDTPaymentMethodViewModel viewModel,
         string cryptoCode)
     {
         var network = btcPayNetworkProvider.GetNetwork<TronUSDTLikeSpecificBtcPayNetwork>(cryptoCode);
         if (network is null) return NotFound();
+
+        if (!ModelState.IsValid)
+        {
+            return await GetStoreTronUSDTLikePaymentMethod(cryptoCode);
+        }
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
@@ -150,17 +158,17 @@ public class UITronUSDTLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            if (TronUSDTAddressHelper.IsValid(viewModel.Address) == false)
-            {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = $"{viewModel.Address} is not a TRON address (Base58 format expected).",
-                    Severity = StatusMessageModel.StatusSeverity.Error
-                });
-
-
-                return RedirectToAction("GetStoreTronUSDTLikePaymentMethod", new { storeId = store.Id, cryptoCode });
-            }
+            // if (TronUSDTAddressHelper.IsValid(viewModel.Address) == false)
+            // {
+            //     TempData.SetStatusMessageModel(new StatusMessageModel
+            //     {
+            //         Message = $"{viewModel.Address} is not a TRON address (Base58 format expected).",
+            //         Severity = StatusMessageModel.StatusSeverity.Error
+            //     });
+            //
+            //
+            //     return RedirectToAction("GetStoreTronUSDTLikePaymentMethod", new { storeId = store.Id, cryptoCode });
+            // }
 
             //todo check tron format
             if (currentPaymentMethodConfig.Addresses.Contains(viewModel.Address))
