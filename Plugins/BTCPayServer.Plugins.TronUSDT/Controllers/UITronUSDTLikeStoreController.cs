@@ -50,18 +50,14 @@ public class UITronUSDTLikeStoreController(
         foreach (var network in tronUSDTLikeNetwork)
         {
             var paymentMethodId = TronUSDTPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
-            var matchedPaymentMethod =
-                storeData.GetPaymentMethodConfig<TronUSDTPaymentMethodConfig>(paymentMethodId, handlers);
-
-            if (matchedPaymentMethod == null)
-                continue;
+            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDTPaymentMethodConfig>(paymentMethodId, handlers);
 
             vm.Items.Add(new ViewTronUSDTStoreOptionItemViewModel
             {
                 CryptoCode = network.CryptoCode,
                 DisplayName = network.DisplayName,
-                Enabled = !excludeFilters.Match(paymentMethodId),
-                Addresses = matchedPaymentMethod.Addresses,
+                Enabled = matchedPaymentMethod != null && !excludeFilters.Match(paymentMethodId),
+                Addresses = matchedPaymentMethod == null ? Array.Empty<string>() : matchedPaymentMethod.Addresses,
             });
         }
 
