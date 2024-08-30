@@ -104,12 +104,9 @@ public class TronUSDTListener(
                             logger.LogInformation("New block avoid from {BlockNumber} to {NewBlockNumber}",
                                 listenerState.LastBlockHeight, lastBlockNumber);
                             listenerState.LastBlockHeight = lastBlockNumber;
-                            Thread.Sleep(3_000);
                         }
-                        else
-                        {
-                            Thread.Sleep(5_000);
-                        }
+
+                        Thread.Sleep(30_000);
                     }
                     else
                     {
