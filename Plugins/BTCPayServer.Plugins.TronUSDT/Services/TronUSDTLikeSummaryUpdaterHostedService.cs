@@ -44,9 +44,9 @@ public class TronUSDTLikeSummaryUpdaterHostedService(
                 {
                     await tronUSDTRpcProvider.UpdateSummary(cryptoCode);
                     if (tronUSDTRpcProvider.IsAvailable(cryptoCode))
-                        await Task.Delay(TimeSpan.FromSeconds(5), cancellation);
+                        await Task.Delay(TimeSpan.FromSeconds(60 * 5), cancellation);
                     else
-                        await Task.Delay(TimeSpan.FromSeconds(2), cancellation);
+                        await Task.Delay(TimeSpan.FromSeconds(30), cancellation);
                 }
                 catch (Exception ex) when (!cancellation.IsCancellationRequested)
                 {
