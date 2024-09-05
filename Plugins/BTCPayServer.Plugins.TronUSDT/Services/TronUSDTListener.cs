@@ -212,18 +212,18 @@ public class TronUSDTListener(
         var updatedPaymentEntities =
             new BlockingCollection<(PaymentEntity Payment, InvoiceEntity invoice)>();
         foreach (var invoice in invoices)
-        foreach (var payment in GetAllTronUSDTLikePayments(invoice, cryptoCode)
-                     .Where(p => p.Status == PaymentStatus.Processing))
-        {
-            var paymentData = handler.ParsePaymentDetails(payment.Details);
+            foreach (var payment in GetAllTronUSDTLikePayments(invoice, cryptoCode)
+                         .Where(p => p.Status == PaymentStatus.Processing))
+            {
+                var paymentData = handler.ParsePaymentDetails(payment.Details);
 
-            paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
-            payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
-                ? PaymentStatus.Settled
-                : PaymentStatus.Processing;
-            payment.SetDetails(handler, paymentData);
-            updatedPaymentEntities.Add((payment, invoice));
-        }
+                paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
+                payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
+                    ? PaymentStatus.Settled
+                    : PaymentStatus.Processing;
+                payment.SetDetails(handler, paymentData);
+                updatedPaymentEntities.Add((payment, invoice));
+            }
 
         await paymentService.UpdatePayments(updatedPaymentEntities.Select(tuple => tuple.Payment).ToList());
         foreach (var valueTuples in updatedPaymentEntities.GroupBy(entity => entity.invoice))

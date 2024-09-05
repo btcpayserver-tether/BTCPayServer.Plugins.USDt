@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using BTCPayServer.Payments;
 using BTCPayServer.Services.Invoices;

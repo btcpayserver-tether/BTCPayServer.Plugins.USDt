@@ -1,5 +1,4 @@
 using System;
-using System.ComponentModel.DataAnnotations;
 using BTCPayServer.Plugins.TronUSDT.Configuration;
 using BTCPayServer.Validation;
 

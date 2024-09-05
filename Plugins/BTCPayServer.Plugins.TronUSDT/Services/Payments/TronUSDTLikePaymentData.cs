@@ -38,7 +38,7 @@ public class TronUSDTLikePaymentData : CryptoPaymentData
             SpeedPolicy.MediumSpeed => ConfirmationCount >= 6,
             SpeedPolicy.LowMediumSpeed => ConfirmationCount >= 12,
             SpeedPolicy.LowSpeed => ConfirmationCount >= 20,
-            _ => false,
+            _ => false
         };
     }
 }

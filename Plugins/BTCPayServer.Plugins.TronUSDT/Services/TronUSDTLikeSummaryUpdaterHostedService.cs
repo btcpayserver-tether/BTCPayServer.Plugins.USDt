@@ -21,9 +21,7 @@ public class TronUSDTLikeSummaryUpdaterHostedService(
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         foreach (var tronUSDTLikeConfigurationItem in tronUSDTLikeConfiguration.TronUSDTLikeConfigurationItems)
-        {
             _ = StartLoop(_cts.Token, tronUSDTLikeConfigurationItem.Key);
-        }
 
         return Task.CompletedTask;
     }

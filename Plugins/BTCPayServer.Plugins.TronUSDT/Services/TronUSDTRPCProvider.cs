@@ -19,13 +19,13 @@ namespace BTCPayServer.Plugins.TronUSDT.Services;
 public class TronUSDTRPCProvider
 {
     private readonly EventAggregator _eventAggregator;
-    private readonly BTCPayNetworkProvider _networkProvider;
+    private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly BTCPayNetworkProvider _networkProvider;
     private readonly SettingsRepository _settingsRepository;
 
     private readonly TronUSDTLikeConfiguration _tronUSDTLikeConfiguration;
     private ImmutableDictionary<string, RpcClient>? _walletRpcClients;
-    private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
 
     public TronUSDTRPCProvider(TronUSDTLikeConfiguration tronUSDTLikeConfiguration,
         EventAggregator eventAggregator,
@@ -42,6 +42,8 @@ public class TronUSDTRPCProvider
         _eventAggregatorSubscription = _eventAggregator.Subscribe<TronUSDTSettingsChanged>(_ => LoadClientsFromConfiguration());
         LoadClientsFromConfiguration();
     }
+
+    public ConcurrentDictionary<string, TronUSDTLikeSummary> Summaries { get; } = new();
 
     private void LoadClientsFromConfiguration()
     {
@@ -66,8 +68,6 @@ public class TronUSDTRPCProvider
         }
     }
 
-    public ConcurrentDictionary<string, TronUSDTLikeSummary> Summaries { get; } = new();
-
     public bool IsAvailable(string cryptoCode)
     {
         cryptoCode = cryptoCode.ToUpperInvariant();
@@ -88,7 +88,7 @@ public class TronUSDTRPCProvider
 
         var hexAddresses = addresses.Select(TronUSDTAddressHelper.Base58ToHex);
         var divisibility = _networkProvider.GetNetwork(cryptoCode).Divisibility;
-        
+
         List<(string, decimal?)> results = [];
         foreach (var address in hexAddresses)
         {
@@ -157,7 +157,10 @@ public class TronUSDTRPCProvider
             _eventAggregator.Publish(new TronUSDTDaemonStateChanged { Summary = summary, CryptoCode = cryptoCode });
     }
 
-    public static string ListenerStateSettingKey(string cryptoCode) => "TRONUSDT_LISTENER_" + cryptoCode;
+    public static string ListenerStateSettingKey(string cryptoCode)
+    {
+        return "TRONUSDT_LISTENER_" + cryptoCode;
+    }
 
     public class TronUSDTLikeSummary
     {

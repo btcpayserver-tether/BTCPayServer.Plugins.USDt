@@ -57,7 +57,7 @@ public class UITronUSDTLikeStoreController(
                 CryptoCode = network.CryptoCode,
                 DisplayName = network.DisplayName,
                 Enabled = matchedPaymentMethod != null && !excludeFilters.Match(paymentMethodId),
-                Addresses = matchedPaymentMethod == null ? Array.Empty<string>() : matchedPaymentMethod.Addresses,
+                Addresses = matchedPaymentMethod == null ? Array.Empty<string>() : matchedPaymentMethod.Addresses
             });
         }
 
@@ -140,10 +140,7 @@ public class UITronUSDTLikeStoreController(
         var network = btcPayNetworkProvider.GetNetwork<TronUSDTLikeSpecificBtcPayNetwork>(cryptoCode);
         if (network is null) return NotFound();
 
-        if (!ModelState.IsValid)
-        {
-            return await GetStoreTronUSDTLikePaymentMethod(cryptoCode);
-        }
+        if (!ModelState.IsValid) return await GetStoreTronUSDTLikePaymentMethod(cryptoCode);
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();

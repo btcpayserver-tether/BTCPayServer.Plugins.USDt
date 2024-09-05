@@ -1,9 +1,9 @@
 @inject DisplayFormatter DisplayFormatter
-@using BTCPayServer.Services
-@using BTCPayServer.Services.Invoices
-@using BTCPayServer.Plugins.TronUSDT.Services.Payments
 @using System.Globalization
 @using BTCPayServer.Plugins.TronUSDT.Controllers.ViewModels
+@using BTCPayServer.Plugins.TronUSDT.Services.Payments
+@using BTCPayServer.Services
+@using BTCPayServer.Services.Invoices
 @model IEnumerable<BTCPayServer.Services.Invoices.PaymentEntity>
 @inject TransactionLinkProviders TransactionLinkProviders
 @inject PaymentMethodHandlerDictionary handlers

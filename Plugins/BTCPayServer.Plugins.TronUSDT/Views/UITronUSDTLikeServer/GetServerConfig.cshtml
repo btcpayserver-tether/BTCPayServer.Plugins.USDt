@@ -10,11 +10,11 @@
         <h2>Tron USD₮ server settings</h2>
         <button id="SaveButton" type="submit" class="btn btn-primary" name="command" value="Save">Save</button>
     </div>
-<div class="row">
-    <div class="col-md-6">
-        <div asp-validation-summary="All"></div>
+    <div class="row">
+        <div class="col-md-6">
+            <div asp-validation-summary="All"></div>
+        </div>
     </div>
-</div>
     <partial name="_StatusMessage"/>
     <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
         <symbol id="check-circle-fill" fill="currentColor" viewBox="0 0 16 16">
@@ -29,46 +29,57 @@
     </svg>
     <div class="row">
         <div class="col-md-8">
-                        <h4>Node connection</h4>
-                        <div class="form-group">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                                <label asp-for="JsonRpcUri" class="form-label">JSON-RPC API Uri</label>
-                            </div>
-                            <input asp-for="JsonRpcUri" type="text" class="form-control" placeholder="@ViewData.Model.DefaultJsonRpcUri" style="flex: 1 1 14rem">
-                                                         <span asp-validation-for="JsonRpcUri" class="text-danger"></span>
-                                            <div class="form-text">
-                                                Please provide the URL of the JSON-RPC API <small><a href="https://developers.tron.network/reference/json-rpc-api-overview" target="_blank" rel="noreferrer noopener"><vc:icon symbol="info" /></a></small> of the node you wish to use for the connection with the Tron chain. By default, it uses the public node.
-                                            </div>
-                        </div>
-                        <h4>Advanced</h4>
-         <div class="alert alert-warning d-flex align-items-center" role="alert">
-                                     <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
-                                         <use xlink:href="#exclamation-triangle-fill"/>
-                                     </svg>
-                                     <div>
-                                         Only change this parameter if YOU KNOW WHAT YOU ARE DOING. It can cause <b>security</b> and reliability issues.
-                                         
-                                         
-                                         </div>
-                                 </div>
-                        <div class="form-group">
-                            
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                                <label asp-for="SmartContractAddress" class="form-label">Smart contract address</label>
-                            </div>
+            <h4>Node connection</h4>
+            <div class="form-group">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <label asp-for="JsonRpcUri" class="form-label">JSON-RPC API Uri</label>
+                </div>
+                <input asp-for="JsonRpcUri" type="text" class="form-control" placeholder="@ViewData.Model.DefaultJsonRpcUri" style="flex: 1 1 14rem">
+                <span asp-validation-for="JsonRpcUri" class="text-danger"></span>
+                <div class="form-text">
+                    Please provide the URL of the JSON-RPC API
+                    <small>
+                        <a href="https://developers.tron.network/reference/json-rpc-api-overview" target="_blank" rel="noreferrer noopener">
+                            <vc:icon symbol="info"/>
+                        </a>
+                    </small> of the node you wish to use for the connection with the Tron chain. By default, it uses the public node.
+                </div>
+            </div>
+            <h4>Advanced</h4>
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
+                    <use xlink:href="#exclamation-triangle-fill"/>
+                </svg>
+                <div>
+                    Only change this parameter if YOU KNOW WHAT YOU ARE DOING. It can cause <b>security</b> and reliability issues.
 
-                            <input asp-for="SmartContractAddress" type="text" class="form-control" placeholder="@ViewData.Model.DefaultSmartContractAddress" style="flex: 1 1 14rem">
-                                                  <span asp-validation-for="SmartContractAddress" class="text-danger"></span>
-                            <div class="form-text">
-                                Please provide the address of the smart contract <small><a href="https://tether.to/en/supported-protocols" target="_blank" rel="noreferrer noopener"><vc:icon symbol="info"/></a></small> you wish to use for the connection with the Tron chain. By default, it uses the public contract.
-                            </div>
-                        </div>
+
+                </div>
+            </div>
+            <div class="form-group">
+
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <label asp-for="SmartContractAddress" class="form-label">Smart contract address</label>
+                </div>
+
+                <input asp-for="SmartContractAddress" type="text" class="form-control" placeholder="@ViewData.Model.DefaultSmartContractAddress" style="flex: 1 1 14rem">
+                <span asp-validation-for="SmartContractAddress" class="text-danger"></span>
+                <div class="form-text">
+                    Please provide the address of the smart contract
+                    <small>
+                        <a href="https://tether.to/en/supported-protocols" target="_blank" rel="noreferrer noopener">
+                            <vc:icon symbol="info"/>
+                        </a>
+                    </small> you wish to use for the connection with the Tron chain. By default, it uses the public contract.
+                </div>
+            </div>
 
         </div>
     </div>
 </form>
 
 @* ReSharper disable once Razor.SectionNotResolved *@
+
 @section PageFootContent {
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }

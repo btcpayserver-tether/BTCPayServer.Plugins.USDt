@@ -53,7 +53,7 @@ public class UITronUSDTLikeServerController(
     {
         var network = btcPayNetworkProvider.GetAll().OfType<TronUSDTLikeSpecificBtcPayNetwork>().SingleOrDefault();
         if (network is null) return NotFound();
-        
+
         if (!ModelState.IsValid)
         {
             viewModel.DefaultSmartContractAddress = TronUSDTPlugin.GetDefaultSmartContractAddress(btcPayNetworkProvider.NetworkType, configuration, network);
