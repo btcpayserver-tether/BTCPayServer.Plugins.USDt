@@ -86,11 +86,6 @@ public class TronUSDTListener(
                         listenerState.LastBlockHeight, latestBlockNumber);
                 }
 
-                // Is it useful?
-                var pendingInvoices = await invoiceRepository.GetPendingInvoices(cancellationToken: stoppingToken);
-                foreach (var pendingInvoice in pendingInvoices)
-                    eventAggregator.Publish(new InvoiceNeedUpdateEvent(pendingInvoice.Id));
-
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     if ((await invoiceRepository.GetPendingInvoices(cancellationToken: stoppingToken)).Any(i => StatusToTrack.Any(s => s == i.Status)) ==
@@ -168,22 +163,16 @@ public class TronUSDTListener(
         var paymentId = TronUSDTPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         var handler = (TronUSDTLikePaymentMethodHandler)handlers[paymentId];
 
-        //get all the required data in one list (invoice, its existing payments and the current payment method details)
         var expandedInvoices = invoices.Select(entity => (Invoice: entity,
-                ExistingPayments: GetAllTronUSDTLikePayments(entity, cryptoCode),
                 Prompt: entity.GetPaymentPrompt(paymentId),
-                PaymentMethodDetails: handler.ParsePaymentPromptDetails(entity!.GetPaymentPrompt(paymentId)!
-                    .Details)))
+                PaymentMethodDetails: handler.ParsePaymentPromptDetails(entity.GetPaymentPrompt(paymentId)!.Details)))
             .Select(tuple => (
                 tuple.Invoice,
                 tuple.PaymentMethodDetails,
-                tuple.Prompt,
-                ExistingPayments: tuple.ExistingPayments.Select(entity =>
-                    (Payment: entity, PaymentData: handler.ParsePaymentDetails(entity.Details),
-                        tuple.Invoice))
+                tuple.Prompt
             )).ToArray();
 
-        var accountToAddressQuery = expandedInvoices.Where(i => i.Prompt is { Destination: not null })
+        var invoicesPerAddress = expandedInvoices.Where(i => i.Prompt is { Destination: not null })
             .ToDictionary(i => i.Prompt!.Destination.ToLowerInvariant(), i => i);
 
         var web3Client = tronUSDTRpcProvider.GetWeb3Client(cryptoCode);
@@ -195,13 +184,13 @@ public class TronUSDTListener(
         var matches = changes
             .Where(t => t.Log.Removed == false && TronUSDTAddressHelper.HexToBase58(t.Log.Address)
                 .Equals(GetConfig(cryptoCode).SmartContractAddress, StringComparison.InvariantCultureIgnoreCase))
-            .Where(t => accountToAddressQuery.ContainsKey(TronUSDTAddressHelper.HexToBase58(t.Event.To)
+            .Where(t => invoicesPerAddress.ContainsKey(TronUSDTAddressHelper.HexToBase58(t.Event.To)
                 .ToLowerInvariant()));
 
         foreach (var t in matches)
         {
-            var (invoice, _, _, _) =
-                accountToAddressQuery[TronUSDTAddressHelper.HexToBase58(t.Event.To).ToLowerInvariant()];
+            var (invoice, _, _) =
+                invoicesPerAddress[TronUSDTAddressHelper.HexToBase58(t.Event.To).ToLowerInvariant()];
             await HandlePaymentData(cryptoCode, TronUSDTAddressHelper.HexToBase58(t.Event.From),
                 TronUSDTAddressHelper.HexToBase58(t.Event.To),
                 t.Event.Value.ToHexBigInteger().ToLong(),
@@ -209,19 +198,19 @@ public class TronUSDTListener(
                 invoice);
         }
 
-        var updatedPaymentEntities =
+        var updatedPaymentEntities = 
             new BlockingCollection<(PaymentEntity Payment, InvoiceEntity invoice)>();
         foreach (var invoice in invoices)
-            foreach (var payment in GetAllTronUSDTLikePayments(invoice, cryptoCode)
-                         .Where(p => p.Status == PaymentStatus.Processing))
+            foreach (var payment in GetPendingTronUSDTLikePayments(invoice, cryptoCode))
             {
                 var paymentData = handler.ParsePaymentDetails(payment.Details);
-
                 paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
+                
                 payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
                     ? PaymentStatus.Settled
                     : PaymentStatus.Processing;
                 payment.SetDetails(handler, paymentData);
+                
                 updatedPaymentEntities.Add((payment, invoice));
             }
 
@@ -277,18 +266,23 @@ public class TronUSDTListener(
 
     private async Task UpdateAnyPendingTronUSDTLikePayment(string cryptoCode, BlockWithTransactions block)
     {
-        var invoices = (await invoiceRepository.GetPendingInvoices()).Where(i => StatusToTrack.Contains(i.Status)).ToArray();
+        var paymentMethodId = TronUSDTPaymentType.Instance.GetPaymentMethodId(cryptoCode);
+
+        var invoices = (await invoiceRepository.GetPendingInvoices())
+            .Where(i => StatusToTrack.Contains(i.Status))
+            .Where(i => i.GetPaymentPrompt(paymentMethodId)?.Activated is true)
+            .ToArray();
+        
         if (invoices.Length == 0)
             return;
 
-        var paymentMethodId = TronUSDTPaymentType.Instance.GetPaymentMethodId(cryptoCode);
-        invoices = invoices.Where(entity => entity.GetPaymentPrompt(paymentMethodId)?.Activated is true).ToArray();
         await UpdatePaymentStates(cryptoCode, invoices, block);
     }
 
-    private static IEnumerable<PaymentEntity> GetAllTronUSDTLikePayments(InvoiceEntity invoice, string cryptoCode)
+    private static IEnumerable<PaymentEntity> GetPendingTronUSDTLikePayments(InvoiceEntity invoice, string cryptoCode)
     {
         return invoice.GetPayments(false)
-            .Where(p => p.PaymentMethodId == TronUSDTPaymentType.Instance.GetPaymentMethodId(cryptoCode));
+            .Where(p => p.PaymentMethodId == TronUSDTPaymentType.Instance.GetPaymentMethodId(cryptoCode))
+            .Where(p => p.Status == PaymentStatus.Processing);
     }
 }
