@@ -27,4 +27,4 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test --no-build --verbosity normal BTCPayServer.Plugins.TronUSDT.Tests/BTCPayServer.Plugins.TronUSDT.Tests.csproj
+      run: dotnet test --no-build --verbosity normal BTCPayServer.Plugins.TronUSDt.Tests/BTCPayServer.Plugins.TronUSDt.Tests.csproj

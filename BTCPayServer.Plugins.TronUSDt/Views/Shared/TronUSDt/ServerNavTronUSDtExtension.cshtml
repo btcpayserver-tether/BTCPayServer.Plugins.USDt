@@ -1,0 +1,22 @@
+@using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Client
+@using BTCPayServer.Plugins.TronUSDt.Configuration
+@using BTCPayServer.Plugins.TronUSDt.Controllers
+@using BTCPayServer.Views.Server
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject TronUSDtLikeConfiguration TronUSDtLikeConfiguration;
+@inject IScopeProvider ScopeProvider
+@{
+    var storeId = ScopeProvider.GetCurrentStoreId();
+    var isSettingsActive = ViewData.IsActiveCategory(typeof(ServerNavPages)) && !ViewData.IsActivePage([ServerNavPages.Plugins]);
+    var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
+                   nameof(UITronUSDtLikeServerController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
+}
+
+@if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any()) || isActive)
+{
+    <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+        <a asp-controller="UITronUSDtLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">Tron USD₮</a>
+    </li>
+}

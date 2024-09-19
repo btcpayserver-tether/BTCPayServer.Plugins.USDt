@@ -1,0 +1,16 @@
+@using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Plugins.TronUSDt.Configuration
+@using BTCPayServer.Plugins.TronUSDt.Controllers
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject TronUSDtLikeConfiguration TronUSDtLikeConfiguration;
+@inject IScopeProvider ScopeProvider
+@{
+    var storeId = ScopeProvider.GetCurrentStoreId();
+    var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
+                   nameof(UITronUSDtLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
+}
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any())
+{
+    <a class="nav-link @(isActive ? "active" : string.Empty)" asp-route-storeId="@storeId" asp-action="GetStoreTronUSDtLikePaymentMethods" asp-controller="UITronUSDtLikeStore">TronUSDt</a>
+}

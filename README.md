@@ -1,13 +1,13 @@
-# BTCPay Server TRON USDT Plugin
+# BTCPay Server TRON USDt Plugin
 
-![BTCPay Tron USDT Plugin](Docs/banner.png)
+![BTCPay Tron USDt Plugin](Docs/banner.png)
 
-This repository contains the source code for the BTCPay Server plugin that enables the receipt of USDT payments on the TRON blockchain. 
+This repository contains the source code for the BTCPay Server plugin that enables the receipt of USDt payments on the TRON blockchain. 
 The plugin extends the functionality of BTCPay Server, a self-hosted cryptocurrency payment processor that allows merchants to accept Bitcoin and other cryptocurrencies.
 
 ## 🎨 Features
 
-- **TRON USDT Payments**: Receive USDT payments directly on your BTCPay Server instance using TRON blockchain.
+- **TRON USDt Payments**: Receive USDt payments directly on your BTCPay Server instance using TRON blockchain.
 - **Customizable Settings**: Configure TRON JSON RPC endpoint and addresses to suit your requirements.
 - **Invoice Generation**: Generate invoices with TRON addresses as payment reception.
 - **Blockchain Monitoring**: Scan the TRON blockchain to detect payments in full, overpaid, or partial amounts.
@@ -16,7 +16,7 @@ The plugin extends the functionality of BTCPay Server, a self-hosted cryptocurre
 ## 🧑‍💻 Requirements
 
 - BTCPay Server: Make sure you have a running instance of BTCPay Server. You can find more information and installation instructions [here](https://docs.btcpayserver.org/).
-- TRON Wallet: Set up a TRON wallet (e.g., Ledger, TrustWallet... ) to generate and manage TRON addresses for receiving USDT payments.
+- TRON Wallet: Set up a TRON wallet (e.g., Ledger, TrustWallet... ) to generate and manage TRON addresses for receiving USDt payments.
 
 ## 🚀 Installation
 
@@ -24,7 +24,7 @@ Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugin
 
 ## 💚 Support
 
-For any questions, issues, or feedback related to the BTCPay Server TRON USDT Plugin, please [open an issue](https://github.com/b0l0k/BTCPayServer.Plugins.TronUSDT/issues) in this repository.
+For any questions, issues, or feedback related to the BTCPay Server TRON USDt Plugin, please [open an issue](https://github.com/b0l0k/BTCPayServer.Plugins.TronUSDt/issues) in this repository.
 
 ## 📝 License
 
