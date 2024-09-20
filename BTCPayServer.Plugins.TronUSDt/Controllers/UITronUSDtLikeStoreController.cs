@@ -155,7 +155,7 @@ public class UITronUSDtLikeStoreController(
             // {
             //     TempData.SetStatusMessageModel(new StatusMessageModel
             //     {
-            //         Message = $"{viewModel.Address} is not a TRON address (Base58 format expected).",
+            //         Message = $"{viewModel.Address} is not a Tron address (Base58 format expected).",
             //         Severity = StatusMessageModel.StatusSeverity.Error
             //     });
             //

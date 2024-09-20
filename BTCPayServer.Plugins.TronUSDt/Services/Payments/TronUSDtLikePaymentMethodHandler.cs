@@ -41,7 +41,7 @@ public class TronUSDtLikePaymentMethodHandler(
         var details = new TronUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
                                    .GetOneNotReservedAddress(context.PaymentMethodId, _invoiceRepository) ??
-                               throw new PaymentMethodUnavailableException("All your TRON adresses are currently waiting payment");
+                               throw new PaymentMethodUnavailableException("All your Tron adresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0; //TODO: vbn
         context.Prompt.Details = JObject.FromObject(details, Serializer);
