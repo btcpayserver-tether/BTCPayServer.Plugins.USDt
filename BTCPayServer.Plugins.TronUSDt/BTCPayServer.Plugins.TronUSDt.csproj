@@ -12,9 +12,10 @@
     <PropertyGroup>
         <Product>TronUSDt Plugin</Product>
         <Description>Accept USDt on Tron blockchain.</Description>
-        <Version>0.1.13</Version>
+        <Version>0.0.0</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
+    
     <!-- Plugin development properties -->
     <PropertyGroup>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
@@ -79,4 +80,10 @@
     <ItemGroup>
         <ProjectReference Include="..\submodules\btcpayserver\BTCPayServer\BTCPayServer.csproj"/>
     </ItemGroup>
+    <Target Name="Release" AfterTargets="MinVer">
+        <PropertyGroup>
+            <Version>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</Version>
+            <AssemblyVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</AssemblyVersion>
+        </PropertyGroup>
+    </Target>
 </Project>
