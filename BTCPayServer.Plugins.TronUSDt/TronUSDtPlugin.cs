@@ -66,6 +66,8 @@ public class TronUSDtPlugin : BaseBTCPayServerPlugin
 
         services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtLikePaymentMethodHandler),
             network));
+        services.AddSingleton<IPaymentLinkExtension>(provider =>
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentLinkExtension), new object[] { pmi }));
         services.AddSingleton(provider =>
             (IPaymentModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentModelExtension),
                 network, pmi));
