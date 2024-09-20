@@ -37,6 +37,10 @@
 
 
     <ItemGroup>
+        <PackageReference Include="MinVer" Version="6.0.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Nethereum.Contracts" Version="4.20.0"/>
         <PackageReference Include="Nethereum.Hex" Version="4.20.0"/>
         <PackageReference Include="Nethereum.RPC" Version="4.20.0"/>
