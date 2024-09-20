@@ -9,7 +9,7 @@ public class TronBase58Attribute : ValidationAttribute
 {
     public TronBase58Attribute()
     {
-        this.ErrorMessage = "{0} is not a TRON address (Base58 format expected)..";
+        this.ErrorMessage = "{0} is not a Tron address (Base58 format expected)..";
     }
 
     public override bool IsValid(object? value)

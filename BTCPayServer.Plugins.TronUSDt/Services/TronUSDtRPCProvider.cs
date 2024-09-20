@@ -113,7 +113,8 @@ public class TronUSDtRPCProvider
 
     public async Task UpdateSummary(string cryptoCode)
     {
-        if (!_walletRpcClients.TryGetValue(cryptoCode.ToUpperInvariant(), out _)) return;
+        cryptoCode = cryptoCode.ToUpperInvariant();
+        if (!_walletRpcClients.TryGetValue(cryptoCode, out _)) return;
 
         var listenerState =
             await _settingsRepository.GetSettingAsync<TronUSDtListenerState>(ListenerStateSettingKey(cryptoCode));
@@ -159,7 +160,7 @@ public class TronUSDtRPCProvider
 
     public static string ListenerStateSettingKey(string cryptoCode)
     {
-        return "TRONUSDt_LISTENER_" + cryptoCode;
+        return "TRONUSDT_LISTENER_" + cryptoCode;
     }
 
     public class TronUSDtLikeSummary

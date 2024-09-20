@@ -11,7 +11,7 @@
     <!-- Plugin specific properties -->
     <PropertyGroup>
         <Product>TronUSDt Plugin</Product>
-        <Description>Accept USDt on TRON blockchain.</Description>
+        <Description>Accept USDt on Tron blockchain.</Description>
         <Version>0.1.11</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
