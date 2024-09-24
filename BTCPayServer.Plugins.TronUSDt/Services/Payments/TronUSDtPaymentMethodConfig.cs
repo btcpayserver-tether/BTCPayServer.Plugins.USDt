@@ -19,7 +19,8 @@ public class TronUSDtPaymentMethodConfig
     public static async Task<string[]> GetReservedAddresses(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)
     {
-        var pendingInvoices = (await invoiceRepository.GetPendingInvoices()).Where(i => TronUSDtListener.StatusToTrack.Contains(i.Status));
+        var pendingInvoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true))
+            .Where(i => TronUSDtListener.StatusToTrack.Contains(i.Status));
         return pendingInvoices
             .Select(i => i.GetPaymentPrompt(paymentMethodId)?.Destination)
             .Where(s => s is not null)

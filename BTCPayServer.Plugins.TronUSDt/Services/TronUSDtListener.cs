@@ -89,7 +89,8 @@ public class TronUSDtListener(
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if ((await invoiceRepository.GetPendingInvoices(cancellationToken: stoppingToken)).Any(i => StatusToTrack.Any(s => s == i.Status)) ==
+                    var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(cryptoCode);
+                    if ((await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true, cancellationToken: stoppingToken)).Any(i => StatusToTrack.Any(s => s == i.Status)) ==
                         false)
                     {
                         var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
@@ -289,7 +290,7 @@ public class TronUSDtListener(
     {
         var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(cryptoCode);
 
-        var invoices = (await invoiceRepository.GetPendingInvoices())
+        var invoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true))
             .Where(i => StatusToTrack.Contains(i.Status))
             .Where(i => i.GetPaymentPrompt(paymentMethodId)?.Activated is true)
             .ToArray();
