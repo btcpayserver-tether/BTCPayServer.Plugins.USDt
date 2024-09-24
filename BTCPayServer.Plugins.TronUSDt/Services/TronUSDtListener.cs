@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NBXplorer;
 using Nethereum.BlockchainProcessing.BlockStorage.Entities.Mapping;
+using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
@@ -116,15 +117,20 @@ public class TronUSDtListener(
 
                             listenerState.LastBlockHeight = block.Number.Value;
                         }
+                        else
+                        {
+                            logger.LogInformation("Block not present on node yet {BlockNumber}", listenerState.LastBlockHeight);
+                            Thread.Sleep(500);
+                        }
                     }
 
 
-                    if (listenerState.LastBlockHeight % 1 == 0) await SetTrackingState(cryptoCode, listenerState);
+                    await SetTrackingState(cryptoCode, listenerState);
                 }
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Oups");
+                logger.LogError(e, "An error occurred while indexing");
                 Thread.Sleep(10_000);
             }
     }
@@ -177,9 +183,24 @@ public class TronUSDtListener(
 
         var web3Client = tronUSDtRpcProvider.GetWeb3Client(cryptoCode);
         var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>();
-        var changes = await transferEvent.GetAllChangesAsync(
-            transferEvent.CreateFilterInput(new BlockParameter(block.Number),
-                new BlockParameter(block.Number)));
+
+        // This is a workaround for the fact that sometimes the event is not indexed yet
+        List<EventLog<TransferEventDTO>>? changes;
+        int tries = 0;
+        do
+        {
+               changes = await transferEvent.GetAllChangesAsync(
+                    transferEvent.CreateFilterInput(new BlockParameter(block.Number),
+                        new BlockParameter(block.Number)));
+               
+               if (changes != null && changes.Count != 0)
+                   break;
+               
+               Thread.Sleep(250);
+        } while (tries++ < 3);
+        
+        if(changes == null)
+            throw new InvalidOperationException($"Unable to get changes {block.Number}");
 
         var matches = changes
             .Where(t => t.Log.Removed == false && TronUSDtAddressHelper.HexToBase58(t.Log.Address)
