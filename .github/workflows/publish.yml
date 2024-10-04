@@ -25,4 +25,4 @@ jobs:
             "GitRef": "${{ env.GIT_REF }}"
           }'
         env:
-          pluginSlug: "tronusdt" 
+          pluginSlug: "tether-usdt" 
