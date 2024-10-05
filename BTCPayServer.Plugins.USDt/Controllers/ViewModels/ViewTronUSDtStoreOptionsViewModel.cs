@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace BTCPayServer.Plugins.TronUSDt.Controllers.ViewModels;
+namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
 public class ViewTronUSDtStoreOptionsViewModel
 {

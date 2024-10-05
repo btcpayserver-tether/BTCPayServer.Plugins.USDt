@@ -1,4 +1,4 @@
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtLikeOnChainPaymentMethodDetails
 {

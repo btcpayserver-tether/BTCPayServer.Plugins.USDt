@@ -2,11 +2,12 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Logging;
-using BTCPayServer.Plugins.TronUSDt.Configuration;
+using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtLikeSummaryUpdaterHostedService(
     TronUSDtRPCProvider tronUSDtRpcProvider,

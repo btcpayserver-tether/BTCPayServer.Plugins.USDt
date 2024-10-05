@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -9,8 +10,9 @@ using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client.Models;
 using BTCPayServer.Data;
 using BTCPayServer.Events;
-using BTCPayServer.Plugins.TronUSDt.Configuration;
-using BTCPayServer.Plugins.TronUSDt.Services.Payments;
+using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Invoices;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,7 +23,7 @@ using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtListener(
     InvoiceRepository invoiceRepository,

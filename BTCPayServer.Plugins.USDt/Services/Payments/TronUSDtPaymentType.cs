@@ -1,6 +1,6 @@
 using BTCPayServer.Payments;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 internal class TronUSDtPaymentType
 {

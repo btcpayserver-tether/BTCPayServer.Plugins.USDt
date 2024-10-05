@@ -1,10 +1,11 @@
 using System.Globalization;
 using System.Numerics;
 using BTCPayServer.Client.Models;
+using BTCPayServer.Payments;
 using BTCPayServer.Services.Invoices;
 using Nethereum.Web3;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtLikePaymentData : CryptoPaymentData
 {

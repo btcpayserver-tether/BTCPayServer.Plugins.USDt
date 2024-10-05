@@ -7,16 +7,17 @@ using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Client;
 using BTCPayServer.Data;
 using BTCPayServer.Filters;
-using BTCPayServer.Plugins.TronUSDt.Controllers.ViewModels;
-using BTCPayServer.Plugins.TronUSDt.Services;
-using BTCPayServer.Plugins.TronUSDt.Services.Payments;
+using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
+using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Stores;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BTCPayServer.Plugins.TronUSDt.Controllers;
+namespace BTCPayServer.Plugins.USDt.Controllers;
 
 [Route("stores/{storeId}/tronUSDtlike")]
 [OnlyIfSupport("TronUSDt")]
@@ -172,7 +173,7 @@ public class UITronUSDtLikeStoreController(
                     Severity = StatusMessageModel.StatusSeverity.Error
                 });
 
-                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, cryptoCode });
+                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, cryptoCode = cryptoCode });
             }
 
             currentPaymentMethodConfig.Addresses =

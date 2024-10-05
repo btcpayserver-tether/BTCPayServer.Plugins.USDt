@@ -6,12 +6,11 @@
         <Configurations>Release;Altcoins-Debug</Configurations>
         <Platforms>AnyCPU</Platforms>
         <Nullable>enable</Nullable>
-        <RootNamespace>BTCPayServer.Plugins.TronUSDt</RootNamespace>
     </PropertyGroup>
     <!-- -->
     <!-- Plugin specific properties -->
     <PropertyGroup>
-        <Product>TronUSDt Plugin</Product>
+        <Product>USDt Plugin</Product>
         <Description>Accept USDt on Tron blockchain.</Description>
         <Version>0.0.0</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

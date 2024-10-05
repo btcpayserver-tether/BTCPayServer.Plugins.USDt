@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using BTCPayServer.Payments;
 using BTCPayServer.Services.Invoices;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtPaymentMethodConfig
 {

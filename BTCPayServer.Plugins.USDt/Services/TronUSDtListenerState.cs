@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtListenerState
 {

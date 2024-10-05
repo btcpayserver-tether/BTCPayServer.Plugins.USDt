@@ -1,10 +1,9 @@
-using System;
 using System.Globalization;
 using BTCPayServer.Payments;
 using BTCPayServer.Services.Invoices;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId) : IPaymentLinkExtension
 {

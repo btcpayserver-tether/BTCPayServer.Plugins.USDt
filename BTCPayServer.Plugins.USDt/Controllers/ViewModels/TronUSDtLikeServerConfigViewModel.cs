@@ -1,8 +1,8 @@
 using System;
-using BTCPayServer.Plugins.TronUSDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Validation;
 
-namespace BTCPayServer.Plugins.TronUSDt.Controllers.ViewModels;
+namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
 public class TronUSDtLikeServerConfigViewModel
 {

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BTCPayServer.Abstractions.Contracts;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider) : ISyncSummaryProvider
 {

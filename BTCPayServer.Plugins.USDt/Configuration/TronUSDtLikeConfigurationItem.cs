@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using BTCPayServer.Plugins.TronUSDt.Services;
+using BTCPayServer.Plugins.USDt.Services;
 
-namespace BTCPayServer.Plugins.TronUSDt.Configuration;
+namespace BTCPayServer.Plugins.USDt.Configuration;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
 public class TronBase58Attribute : ValidationAttribute
