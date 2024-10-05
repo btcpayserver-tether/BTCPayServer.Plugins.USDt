@@ -1,6 +1,6 @@
-﻿using BTCPayServer.Plugins.TronUSDt.Configuration;
+﻿using BTCPayServer.Plugins.USDt.Configuration;
 
-namespace BTCPayServer.Plugins.TronUSDt.Controllers.ViewModels;
+namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
 public class EditTronUSDtPaymentMethodViewModel
 {

@@ -1,4 +1,4 @@
-﻿namespace BTCPayServer.Plugins.TronUSDt.Services.Events;
+﻿namespace BTCPayServer.Plugins.USDt.Services.Events;
 
 public class TronUSDtSettingsChanged
 {

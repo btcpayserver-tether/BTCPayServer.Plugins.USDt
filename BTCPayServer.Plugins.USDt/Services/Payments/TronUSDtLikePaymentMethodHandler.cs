@@ -7,7 +7,7 @@ using BTCPayServer.Services.Stores;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtLikePaymentMethodHandler(
     TronUSDtLikeSpecificBtcPayNetwork network,

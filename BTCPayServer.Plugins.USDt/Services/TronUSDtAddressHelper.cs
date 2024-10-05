@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text;
 using NBitcoin.DataEncoders;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public static class TronUSDtAddressHelper
 {

@@ -1,7 +1,7 @@
 ﻿using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client.Models;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtSyncStatus : SyncStatus, ISyncStatus
 {

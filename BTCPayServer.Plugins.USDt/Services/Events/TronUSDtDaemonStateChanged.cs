@@ -1,4 +1,6 @@
-﻿namespace BTCPayServer.Plugins.TronUSDt.Services.Events;
+﻿using BTCPayServer.Payments;
+
+namespace BTCPayServer.Plugins.USDt.Services.Events;
 
 public class TronUSDtDaemonStateChanged
 {

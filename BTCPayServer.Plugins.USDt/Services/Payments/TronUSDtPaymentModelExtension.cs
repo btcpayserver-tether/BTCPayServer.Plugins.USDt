@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BTCPayServer.Payments;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services.Payments;
+namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtPaymentModelExtension(
     PaymentMethodId paymentMethodId,

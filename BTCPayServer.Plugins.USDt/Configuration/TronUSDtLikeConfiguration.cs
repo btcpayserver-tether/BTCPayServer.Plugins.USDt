@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using BTCPayServer.Payments;
 
-namespace BTCPayServer.Plugins.TronUSDt.Configuration;
+namespace BTCPayServer.Plugins.USDt.Configuration;
 
 public class TronUSDtLikeConfiguration
 {

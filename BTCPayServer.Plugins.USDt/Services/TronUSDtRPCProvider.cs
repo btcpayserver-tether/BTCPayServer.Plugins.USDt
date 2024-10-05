@@ -6,15 +6,16 @@ using System.Linq;
 using System.Net.Http;
 using System.Numerics;
 using System.Threading.Tasks;
-using BTCPayServer.Plugins.TronUSDt.Configuration;
-using BTCPayServer.Plugins.TronUSDt.Services.Events;
+using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Services.Events;
 using BTCPayServer.Services;
 using NBitcoin;
 using Nethereum.JsonRpc.Client;
 using Nethereum.StandardTokenEIP20;
 using Nethereum.Web3;
 
-namespace BTCPayServer.Plugins.TronUSDt.Services;
+namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtRPCProvider
 {
@@ -160,7 +161,7 @@ public class TronUSDtRPCProvider
 
     public static string ListenerStateSettingKey(string cryptoCode)
     {
-        return "TRONUSDT_LISTENER_" + cryptoCode;
+        return "USDT_LISTENER_" + cryptoCode;
     }
 
     public class TronUSDtLikeSummary
