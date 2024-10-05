@@ -2,7 +2,7 @@
 using System.Text.Json;
 
 var solutionFolder = Directory.GetDirectories("../../../../");
-var plugin = solutionFolder.Single(e => Path.GetFileName(e) == "BTCPayServer.Plugins.TronUSDt");
+var plugin = solutionFolder.Single(e => Path.GetFileName(e) == "BTCPayServer.Plugins.USDt");
 var assemblyConfigurationAttribute = typeof(Program).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>();
 var buildConfigurationName = assemblyConfigurationAttribute?.Configuration;
         

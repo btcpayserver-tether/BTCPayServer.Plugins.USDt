@@ -26,9 +26,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.PluginPacker",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Tests", "submodules\btcpayserver\BTCPayServer.Tests\BTCPayServer.Tests.csproj", "{4146B6DF-7BEE-4BD0-B6B1-77E7630A1B81}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.TronUSDt.Tests", "BTCPayServer.Plugins.TronUSDt.Tests\BTCPayServer.Plugins.TronUSDt.Tests.csproj", "{C6E671F6-5417-4F2F-A5A2-0A7D307BA1F7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.USDt.Tests", "BTCPayServer.Plugins.USDt.Tests\BTCPayServer.Plugins.USDt.Tests.csproj", "{C6E671F6-5417-4F2F-A5A2-0A7D307BA1F7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.TronUSDt", "BTCPayServer.Plugins.TronUSDt\BTCPayServer.Plugins.TronUSDt.csproj", "{437BFB39-5C8D-402B-A4ED-CD27604A7845}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.USDt", "BTCPayServer.Plugins.USDt\BTCPayServer.Plugins.USDt.csproj", "{437BFB39-5C8D-402B-A4ED-CD27604A7845}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins common", "Plugins common", "{FA57CDB6-8A11-48E3-B342-626DA65140A2}"
 EndProject
