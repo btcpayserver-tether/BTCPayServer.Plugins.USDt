@@ -21,6 +21,6 @@
 @if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any()) || isActive)
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
-        <a asp-controller="UITronUSDtLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">Tron USD₮</a>
+        <a asp-controller="UITronUSDtLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">USD₮ on TRON</a>
     </li>
 }
