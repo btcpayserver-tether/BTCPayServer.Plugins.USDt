@@ -6,6 +6,7 @@
         <Configurations>Release;Altcoins-Debug</Configurations>
         <Platforms>AnyCPU</Platforms>
         <Nullable>enable</Nullable>
+        <RootNamespace>BTCPayServer.Plugins.TronUSDt</RootNamespace>
     </PropertyGroup>
     <!-- -->
     <!-- Plugin specific properties -->

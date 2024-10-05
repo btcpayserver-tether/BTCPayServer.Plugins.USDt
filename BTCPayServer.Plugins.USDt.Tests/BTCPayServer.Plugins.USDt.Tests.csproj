@@ -20,7 +20,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\BTCPayServer.Plugins.TronUSDt\BTCPayServer.Plugins.TronUSDt.csproj" />
+      <ProjectReference Include="..\BTCPayServer.Plugins.USDt\BTCPayServer.Plugins.USDt.csproj" />
       <ProjectReference Include="..\submodules\btcpayserver\BTCPayServer.Tests\BTCPayServer.Tests.csproj" />
     </ItemGroup>
 
