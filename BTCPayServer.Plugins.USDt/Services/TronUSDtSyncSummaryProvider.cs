@@ -11,7 +11,7 @@ public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider
         return tronUSDtRpcProvider.Summaries.All(pair => pair.Value.RpcAvailable);
     }
 
-    public string Partial => "TronUSDt/TronUSDtSyncSummary";
+    public string Partial => "TronUSDtLike/TronUSDtSyncSummary";
 
     public IEnumerable<ISyncStatus> GetStatuses()
     {

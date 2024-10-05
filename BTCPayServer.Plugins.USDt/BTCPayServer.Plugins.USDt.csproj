@@ -11,7 +11,7 @@
     <!-- Plugin specific properties -->
     <PropertyGroup>
         <Product>USDt Plugin</Product>
-        <Description>Accept USDt on Tron blockchain.</Description>
+        <Description>Accept USDt with BTCPayServer.</Description>
         <Version>0.0.0</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
@@ -68,10 +68,10 @@
 
 
     <ItemGroup>
-        <AdditionalFiles Include="Views\Shared\TronUSDt\StoreNavTronUSDtExtension.cshtml"/>
-        <AdditionalFiles Include="Views\Shared\TronUSDt\StoreWalletsNavTronUSDtExtension.cshtml"/>
-        <AdditionalFiles Include="Views\Shared\TronUSDt\TronUSDtSyncSummary.cshtml"/>
-        <AdditionalFiles Include="Views\Shared\TronUSDt\ViewTronUSDtLikePaymentData.cshtml"/>
+        <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreNavTronUSDtExtension.cshtml" />
+        <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreWalletsNavTronUSDtExtension.cshtml" />
+        <AdditionalFiles Include="Views\Shared\TronUSDtLike\TronUSDtSyncSummary.cshtml" />
+        <AdditionalFiles Include="Views\Shared\TronUSDtLike\ViewTronUSDtLikePaymentData.cshtml" />
         <AdditionalFiles Include="Views\UITronUSDtLikeStore\GetStoreTronUSDtLikePaymentMethod.cshtml"/>
         <AdditionalFiles Include="Views\UITronUSDtLikeStore\GetStoreTronUSDtLikePaymentMethods.cshtml"/>
     </ItemGroup>

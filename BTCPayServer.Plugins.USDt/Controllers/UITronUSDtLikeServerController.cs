@@ -16,7 +16,7 @@ using Microsoft.Extensions.Configuration;
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
 [Route("server/tronUSDtlike")]
-[OnlyIfSupport("TronUSDt")]
+[OnlyIfSupport("USDTTRON")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 public class UITronUSDtLikeServerController(
