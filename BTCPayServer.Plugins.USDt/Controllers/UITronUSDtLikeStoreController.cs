@@ -20,7 +20,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
 [Route("stores/{storeId}/tronUSDtlike")]
-[OnlyIfSupport("USDTTRON")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 public class UITronUSDtLikeStoreController(
