@@ -30,7 +30,7 @@ public class TronUSDtListener(
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     TronUSDtRPCProvider tronUSDtRpcProvider,
-    TronUSDtLikeConfiguration tronUSDtLikeConfiguration,
+    USDtPluginConfiguration usdtPluginConfiguration,
     BTCPayNetworkProvider networkProvider,
     ILogger<TronUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
@@ -47,10 +47,10 @@ public class TronUSDtListener(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
+        if (usdtPluginConfiguration.TronUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _ = LoopIndex(tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Keys.Single(), _cts.Token);
+        _ = LoopIndex(usdtPluginConfiguration.TronUSDtLikeConfigurationItems.Keys.Single(), _cts.Token);
         return Task.CompletedTask;
     }
 
@@ -161,7 +161,7 @@ public class TronUSDtListener(
 
     private TronUSDtLikeConfigurationItem GetConfig(string cryptoCode)
     {
-        return tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems[cryptoCode];
+        return usdtPluginConfiguration.TronUSDtLikeConfigurationItems[cryptoCode];
     }
 
     private async Task UpdatePaymentStates(string cryptoCode, InvoiceEntity[] invoices, BlockWithTransactions block)

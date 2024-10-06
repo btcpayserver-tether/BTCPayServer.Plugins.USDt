@@ -3,7 +3,7 @@ using BTCPayServer.Payments;
 
 namespace BTCPayServer.Plugins.USDt.Configuration;
 
-public class TronUSDtLikeConfiguration
+public class USDtPluginConfiguration
 {
     public Dictionary<string, TronUSDtLikeConfigurationItem> TronUSDtLikeConfigurationItems { get; set; } = [];
 }

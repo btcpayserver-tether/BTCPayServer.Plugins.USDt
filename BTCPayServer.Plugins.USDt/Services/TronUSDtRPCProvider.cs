@@ -25,16 +25,16 @@ public class TronUSDtRPCProvider
     private readonly BTCPayNetworkProvider _networkProvider;
     private readonly SettingsRepository _settingsRepository;
 
-    private readonly TronUSDtLikeConfiguration _tronUSDtLikeConfiguration;
+    private readonly USDtPluginConfiguration _usdtPluginConfiguration;
     private ImmutableDictionary<string, RpcClient>? _walletRpcClients;
 
-    public TronUSDtRPCProvider(TronUSDtLikeConfiguration tronUSDtLikeConfiguration,
+    public TronUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
         EventAggregator eventAggregator,
         SettingsRepository settingsRepository,
         BTCPayNetworkProvider networkProvider,
         IHttpClientFactory httpClientFactory)
     {
-        _tronUSDtLikeConfiguration = tronUSDtLikeConfiguration;
+        _usdtPluginConfiguration = usdtPluginConfiguration;
         _eventAggregator = eventAggregator;
         _settingsRepository = settingsRepository;
         _networkProvider = networkProvider;
@@ -50,7 +50,7 @@ public class TronUSDtRPCProvider
     {
         lock (this)
         {
-            _walletRpcClients = _tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.ToImmutableDictionary(
+            _walletRpcClients = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems.ToImmutableDictionary(
                 pair => pair.Key,
                 pair =>
                 {
@@ -82,7 +82,7 @@ public class TronUSDtRPCProvider
 
     public async Task<(string, decimal?)[]> GetBalances(string cryptoCode, IEnumerable<string> addresses)
     {
-        var configuration = _tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems[cryptoCode];
+        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[cryptoCode];
 
         var tokenService = new StandardTokenService(GetWeb3Client(cryptoCode),
             TronUSDtAddressHelper.Base58ToHex(configuration.SmartContractAddress));
