@@ -49,7 +49,7 @@ public class UITronUSDtLikeStoreController(
         var vm = new ViewTronUSDtStoreOptionsViewModel();
         foreach (var network in tronUSDtLikeNetwork)
         {
-            var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+            var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
             var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
             vm.Items.Add(new ViewTronUSDtStoreOptionItemViewModel
@@ -72,7 +72,7 @@ public class UITronUSDtLikeStoreController(
         if (network is null) return NotFound();
 
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
-        var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         var matchedPaymentMethodConfig =
             StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
@@ -112,7 +112,7 @@ public class UITronUSDtLikeStoreController(
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
 
         var currentPaymentMethodConfig =
             StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
@@ -144,7 +144,7 @@ public class UITronUSDtLikeStoreController(
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         var currentPaymentMethodConfig =
             StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         currentPaymentMethodConfig ??= new TronUSDtPaymentMethodConfig();

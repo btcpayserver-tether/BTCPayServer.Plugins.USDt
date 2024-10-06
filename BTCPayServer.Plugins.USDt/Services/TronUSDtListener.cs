@@ -91,7 +91,7 @@ public class TronUSDtListener(
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(cryptoCode);
+                    var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(cryptoCode);
                     if ((await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true, cancellationToken: stoppingToken)).Any(i => StatusToTrack.Any(s => s == i.Status)) ==
                         false)
                     {
@@ -169,7 +169,7 @@ public class TronUSDtListener(
         if (invoices.Length == 0) return;
 
         var network = networkProvider.GetNetwork(cryptoCode);
-        var paymentId = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var paymentId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         var handler = (TronUSDtLikePaymentMethodHandler)handlers[paymentId];
 
         var expandedInvoices = invoices.Select(entity => (Invoice: entity,
@@ -258,7 +258,7 @@ public class TronUSDtListener(
         string txId, int confirmations, long blockHeight, InvoiceEntity invoice)
     {
         var network = networkProvider.GetNetwork(cryptoCode);
-        var pmi = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var pmi = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         var handler = (TronUSDtLikePaymentMethodHandler)handlers[pmi];
         TronUSDtLikePaymentData details = new()
         {
@@ -290,7 +290,7 @@ public class TronUSDtListener(
 
     private async Task UpdateAnyPendingTronUSDtLikePayment(string cryptoCode, BlockWithTransactions block)
     {
-        var paymentMethodId = TronUSDtPaymentType.Instance.GetPaymentMethodId(cryptoCode);
+        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(cryptoCode);
 
         var invoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true))
             .Where(i => StatusToTrack.Contains(i.Status))
@@ -306,7 +306,7 @@ public class TronUSDtListener(
     private static IEnumerable<PaymentEntity> GetPendingTronUSDtLikePayments(InvoiceEntity invoice, string cryptoCode)
     {
         return invoice.GetPayments(false)
-            .Where(p => p.PaymentMethodId == TronUSDtPaymentType.Instance.GetPaymentMethodId(cryptoCode))
+            .Where(p => p.PaymentMethodId == TronUSDtLikePaymentType.Instance.GetPaymentMethodId(cryptoCode))
             .Where(p => p.Status == PaymentStatus.Processing);
     }
 }
