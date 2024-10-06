@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using BTCPayServer.Plugins.USDt.Services;
 
-namespace BTCPayServer.Plugins.USDt.Configuration;
+namespace BTCPayServer.Plugins.USDt.Configuration.Tron;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
 public class TronBase58Attribute : ValidationAttribute
@@ -26,10 +26,4 @@ public class TronBase58Attribute : ValidationAttribute
 
         return TronUSDtAddressHelper.IsValid(valueAsString);
     }
-}
-
-public class TronUSDtLikeConfigurationItem
-{
-    public required Uri JsonRpcUri { get; init; }
-    public required string SmartContractAddress { get; init; }
 }

@@ -33,23 +33,23 @@ public class TronUSDtLikeSummaryUpdaterHostedService(
         return Task.CompletedTask;
     }
 
-    private async Task StartLoop(CancellationToken cancellation, string cryptoCode)
+    private async Task StartLoop(CancellationToken cancellation, PaymentMethodId pmi)
     {
-        logs.PayServer.LogInformation($"Starting listening TronUSDt-like daemons ({cryptoCode})");
+        logs.PayServer.LogInformation($"Starting listening TronUSDt-like daemons ({pmi})");
         try
         {
             while (!cancellation.IsCancellationRequested)
                 try
                 {
-                    await tronUSDtRpcProvider.UpdateSummary(cryptoCode);
-                    if (tronUSDtRpcProvider.IsAvailable(cryptoCode))
-                        await Task.Delay(TimeSpan.FromSeconds(60 * 5), cancellation);
+                    await tronUSDtRpcProvider.UpdateSummary(pmi);
+                    if (tronUSDtRpcProvider.IsAvailable(pmi))
+                        await Task.Delay(TimeSpan.FromSeconds(60), cancellation);
                     else
                         await Task.Delay(TimeSpan.FromSeconds(30), cancellation);
                 }
                 catch (Exception ex) when (!cancellation.IsCancellationRequested)
                 {
-                    logs.PayServer.LogError(ex, $"Unhandled exception in Summary updater ({cryptoCode})");
+                    logs.PayServer.LogError(ex, $"Unhandled exception in Summary updater ({pmi})");
                     await Task.Delay(TimeSpan.FromSeconds(10), cancellation);
                 }
         }

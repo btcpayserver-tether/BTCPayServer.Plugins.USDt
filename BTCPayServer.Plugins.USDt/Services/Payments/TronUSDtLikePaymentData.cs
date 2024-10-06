@@ -15,7 +15,7 @@ public class TronUSDtLikePaymentData : CryptoPaymentData
     public BigInteger BlockHeight { get; init; }
     public required string To { get; init; } // For future usages
     public required string From { get; init; } // For future usages
-    public required string CryptoCode { get; init; }
+    public required PaymentMethodId PaymentMethodId { get; set; }
 
     public string GetPaymentProof()
     {

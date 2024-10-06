@@ -6,12 +6,14 @@ using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client;
 using BTCPayServer.Filters;
 using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using NBXplorer;
 
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
@@ -21,23 +23,25 @@ namespace BTCPayServer.Plugins.USDt.Controllers;
 public class UITronUSDtLikeServerController(
     IConfiguration configuration,
     ISettingsRepository settingsRepository,
-    BTCPayNetworkProvider btcPayNetworkProvider,
+    NBXplorerNetworkProvider nbXplorerNetworkProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
     EventAggregator eventAggregator) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> GetServerConfig()
     {
-        var network = btcPayNetworkProvider.GetAll().OfType<TronUSDtLikeSpecificBtcPayNetwork>().SingleOrDefault();
-        if (network is null) return NotFound();
+        var tronUSDtConfiguration = usdtPluginConfiguration.TronUSDtLikeConfigurationItems.SingleOrDefault().Value;
+        if (tronUSDtConfiguration is null)
+            throw new InvalidOperationException();
 
-        var serverSettings = await settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(
-            USDtPlugin.ServerSettingsKey(network.CryptoCode));
+        var tronUSDtDefaultConfiguration = USDtPlugin.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
+
+        var serverSettings = await settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(tronUSDtConfiguration));
 
         var viewModel = new TronUSDtLikeServerConfigViewModel()
         {
-            DefaultSmartContractAddress = USDtPlugin.GetDefaultSmartContractAddress(btcPayNetworkProvider.NetworkType, configuration, network),
-            DefaultJsonRpcUri = USDtPlugin.GetDefaultJsonRpcUri(btcPayNetworkProvider.NetworkType, configuration, network),
+            DefaultSmartContractAddress = tronUSDtDefaultConfiguration.SmartContractAddress,
+            DefaultJsonRpcUri = tronUSDtDefaultConfiguration.JsonRpcUri,
 
             SmartContractAddress = serverSettings?.SmartContractAddress,
             JsonRpcUri = serverSettings?.JsonRpcUri?.AbsoluteUri,
@@ -50,27 +54,28 @@ public class UITronUSDtLikeServerController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GetServerConfig(TronUSDtLikeServerConfigViewModel viewModel)
     {
-        var network = btcPayNetworkProvider.GetAll().OfType<TronUSDtLikeSpecificBtcPayNetwork>().SingleOrDefault();
-        if (network is null) return NotFound();
-
+        var currentConfiguration = usdtPluginConfiguration.TronUSDtLikeConfigurationItems.SingleOrDefault().Value;
+        if (currentConfiguration is null)
+            throw new InvalidOperationException();
+        
+        var tronUSDtDefaultConfiguration = USDtPlugin.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
         if (!ModelState.IsValid)
         {
-            viewModel.DefaultSmartContractAddress = USDtPlugin.GetDefaultSmartContractAddress(btcPayNetworkProvider.NetworkType, configuration, network);
-            viewModel.DefaultJsonRpcUri = USDtPlugin.GetDefaultJsonRpcUri(btcPayNetworkProvider.NetworkType, configuration, network);
+            viewModel.DefaultSmartContractAddress = tronUSDtDefaultConfiguration.SmartContractAddress;
+            viewModel.DefaultJsonRpcUri = tronUSDtDefaultConfiguration.JsonRpcUri;
             return View(viewModel);
         }
 
-        TronUSDtLikeServerSettings serverSettings = new TronUSDtLikeServerSettings()
+        var serverSettings = new TronUSDtLikeServerSettings()
         {
             SmartContractAddress = viewModel.SmartContractAddress is null or "" ? null : viewModel.SmartContractAddress,
             JsonRpcUri = viewModel.JsonRpcUri is null or "" ? null : new Uri(viewModel.JsonRpcUri)
         };
 
-        await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(network.CryptoCode));
+        await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
 
-        usdtPluginConfiguration.TronUSDtLikeConfigurationItems[network.CryptoCode] =
-            USDtPlugin.GetConfigurationItem(btcPayNetworkProvider.NetworkType, serverSettings, configuration, network);
-
+        usdtPluginConfiguration.TronUSDtLikeConfigurationItems[currentConfiguration.GetPaymentMethodId()] =
+            USDtPlugin.OverrideWithServerSettings(tronUSDtDefaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new TronUSDtSettingsChanged());
 
