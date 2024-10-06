@@ -10,7 +10,7 @@
     <!-- -->
     <!-- Plugin specific properties -->
     <PropertyGroup>
-        <Product>USDt Plugin</Product>
+        <Product>Tether USDt</Product>
         <Description>Accept USDt with BTCPayServer.</Description>
         <Version>0.0.0</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
