@@ -2,7 +2,7 @@ using System;
 
 namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
-public class TronUSDtPaymentViewModel
+public class TronUSDtLikePaymentViewModel
 {
     public required string CurrencyDisplayName { get; init; }
     public required string Confirmations { get; init; }

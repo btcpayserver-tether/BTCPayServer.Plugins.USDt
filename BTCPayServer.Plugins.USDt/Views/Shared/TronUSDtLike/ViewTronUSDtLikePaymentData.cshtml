@@ -19,7 +19,7 @@
         var onChainPaymentData = handler.ParsePaymentDetails(payment.Details);
         var confirmationCount = onChainPaymentData.ConfirmationCount;
 
-        var m = new TronUSDtPaymentViewModel
+        var m = new TronUSDtLikePaymentViewModel
         {
             CurrencyDisplayName = pluginConfiguration.TronUSDtLikeConfigurationItems[handler.PaymentMethodId].CurrencyDisplayName,
             DepositAddress = payment.Destination,
@@ -30,13 +30,13 @@
             TransactionLink = TransactionLinkProviders.GetTransactionLink(payment.PaymentMethodId, onChainPaymentData.TransactionId)
         };
         return m;
-    }).Where(c => c != null).Cast<TronUSDtPaymentViewModel>().ToList();
+    }).Where(c => c != null).Cast<TronUSDtLikePaymentViewModel>().ToList();
 }
 
 @if (payments.Any())
 {
     <section>
-        <h5>USDt on TRON Payments</h5>
+        <h5>TRON Payments</h5>
         <table class="table table-hover">
             <thead>
             <tr>
