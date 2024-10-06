@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -23,6 +24,7 @@ using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
+using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
@@ -252,6 +254,9 @@ public class TronUSDtListener(
         BigInteger totalAmount,
         string txId, int confirmations, long blockHeight, InvoiceEntity invoice)
     {
+        var totalAmountBigDecimal = decimal.Parse(Web3.Convert.FromWeiToBigDecimal(totalAmount, GetConfig(pmi).Divisibility).ToString(),
+            CultureInfo.InvariantCulture);
+        
         var config = GetConfig(pmi);
         var handler = (TronUSDtLikePaymentMethodHandler)handlers[pmi];
         TronUSDtLikePaymentData details = new()
@@ -261,14 +266,12 @@ public class TronUSDtListener(
             TransactionId = txId,
             ConfirmationCount = confirmations,
             BlockHeight = blockHeight,
-            Amount = totalAmount,
-            PaymentMethodId = pmi
         };
 
         var paymentData = new PaymentData
         {
             Status = details.PaymentConfirmed(invoice.SpeedPolicy) ? PaymentStatus.Settled : PaymentStatus.Processing,
-            Amount = details.GetValue(),
+            Amount = totalAmountBigDecimal,
             Created = DateTimeOffset.UtcNow,
             Id = txId,
             Currency = config.Currency,

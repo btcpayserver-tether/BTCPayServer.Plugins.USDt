@@ -9,13 +9,11 @@ namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtLikePaymentData : CryptoPaymentData
 {
-    public BigInteger Amount { get; init; }
     public int ConfirmationCount { get; set; }
     public required string TransactionId { get; init; }
     public BigInteger BlockHeight { get; init; }
     public required string To { get; init; } // For future usages
     public required string From { get; init; } // For future usages
-    public required PaymentMethodId PaymentMethodId { get; set; }
 
     public string GetPaymentProof()
     {
@@ -23,13 +21,6 @@ public class TronUSDtLikePaymentData : CryptoPaymentData
         return null;
 #pragma warning restore CS8603 // Possible null reference return.
     }
-
-    public decimal GetValue()
-    {
-        return decimal.Parse(Web3.Convert.FromWeiToBigDecimal(Amount, 6).ToString(), //todo vbn fix constant
-            CultureInfo.InvariantCulture);
-    }
-
 
     public bool PaymentConfirmed(SpeedPolicy speedPolicy)
     {
