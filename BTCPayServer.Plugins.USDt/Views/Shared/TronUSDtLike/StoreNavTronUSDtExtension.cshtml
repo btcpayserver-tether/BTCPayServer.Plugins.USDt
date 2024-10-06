@@ -5,14 +5,14 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @inject SignInManager<ApplicationUser> SignInManager;
-@inject TronUSDtLikeConfiguration TronUSDtLikeConfiguration;
+@inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
     var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
                    nameof(UITronUSDtLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
 }
-@if (SignInManager.IsSignedIn(User) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any())
+@if (SignInManager.IsSignedIn(User) && USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any())
 {
     <a class="nav-link @(isActive ? "active" : string.Empty)" asp-route-storeId="@storeId" asp-action="GetStoreTronUSDtLikePaymentMethods" asp-controller="UITronUSDtLikeStore">TronUSDt</a>
 }

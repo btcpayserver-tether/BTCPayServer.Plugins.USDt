@@ -77,14 +77,14 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
     }
 
-    private static TronUSDtLikeConfiguration ConfigureTronUSDtLikeConfiguration(IServiceProvider serviceProvider,
+    private static USDtPluginConfiguration ConfigureTronUSDtLikeConfiguration(IServiceProvider serviceProvider,
         ChainName chainName)
     {
         var configuration = serviceProvider.GetService<IConfiguration>();
         var btcPayNetworkProvider = serviceProvider.GetService<BTCPayNetworkProvider>() ?? throw new InvalidOperationException("NetworkProvider is not provided.");
         var settingsRepository = serviceProvider.GetService<ISettingsRepository>() ?? throw new InvalidOperationException("serviceProvider.GetService<ISettingsRepository>()");
 
-        var result = new TronUSDtLikeConfiguration();
+        var result = new USDtPluginConfiguration();
 
         var supportedNetworks = btcPayNetworkProvider.GetAll().OfType<TronUSDtLikeSpecificBtcPayNetwork>();
 

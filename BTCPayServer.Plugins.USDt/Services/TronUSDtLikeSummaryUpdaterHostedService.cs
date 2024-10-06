@@ -11,7 +11,7 @@ namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtLikeSummaryUpdaterHostedService(
     TronUSDtRPCProvider tronUSDtRpcProvider,
-    TronUSDtLikeConfiguration tronUSDtLikeConfiguration,
+    USDtPluginConfiguration usdtPluginConfiguration,
     Logs logs)
     : IHostedService
 {
@@ -21,7 +21,7 @@ public class TronUSDtLikeSummaryUpdaterHostedService(
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        foreach (var tronUSDtLikeConfigurationItem in tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems)
+        foreach (var tronUSDtLikeConfigurationItem in usdtPluginConfiguration.TronUSDtLikeConfigurationItems)
             _ = StartLoop(_cts.Token, tronUSDtLikeConfigurationItem.Key);
 
         return Task.CompletedTask;

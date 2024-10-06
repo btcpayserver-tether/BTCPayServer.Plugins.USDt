@@ -9,7 +9,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @inject SignInManager<ApplicationUser> SignInManager;
-@inject TronUSDtLikeConfiguration TronUSDtLikeConfiguration;
+@inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
@@ -18,7 +18,7 @@
                    nameof(UITronUSDtLikeServerController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
 }
 
-@if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any()) || isActive)
+@if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any()) || isActive)
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
         <a asp-controller="UITronUSDtLikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">USD₮ on TRON</a>

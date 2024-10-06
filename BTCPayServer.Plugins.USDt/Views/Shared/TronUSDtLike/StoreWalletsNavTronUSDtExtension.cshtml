@@ -7,14 +7,14 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @inject SignInManager<ApplicationUser> SignInManager;
-@inject TronUSDtLikeConfiguration TronUSDtLikeConfiguration;
+@inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
 @inject UITronUSDtLikeStoreController UITronUSDtLikeStore;
 @inject TronUSDtRPCProvider TronUSDtRPCProvider;
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
 }
-@if (SignInManager.IsSignedIn(User) && TronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems.Any())
+@if (SignInManager.IsSignedIn(User) && USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any())
 {
     var store = Context.GetStoreData();
     var result = UITronUSDtLikeStore.GetVM(store);

@@ -22,7 +22,7 @@ public class UITronUSDtLikeServerController(
     IConfiguration configuration,
     ISettingsRepository settingsRepository,
     BTCPayNetworkProvider btcPayNetworkProvider,
-    TronUSDtLikeConfiguration tronUSDtLikeConfiguration,
+    USDtPluginConfiguration usdtPluginConfiguration,
     EventAggregator eventAggregator) : Controller
 {
     [HttpGet]
@@ -68,7 +68,7 @@ public class UITronUSDtLikeServerController(
 
         await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(network.CryptoCode));
 
-        tronUSDtLikeConfiguration.TronUSDtLikeConfigurationItems[network.CryptoCode] =
+        usdtPluginConfiguration.TronUSDtLikeConfigurationItems[network.CryptoCode] =
             USDtPlugin.GetConfigurationItem(btcPayNetworkProvider.NetworkType, serverSettings, configuration, network);
 
 
