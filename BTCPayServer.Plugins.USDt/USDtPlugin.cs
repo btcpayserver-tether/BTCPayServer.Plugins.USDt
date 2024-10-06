@@ -55,10 +55,6 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddBTCPayNetwork(network)
             .AddTransactionLinkProvider(network.CryptoCode, new TronUSDtTransactionLinkProvider(blockExplorerLink));
 
-        // //TODO: why ?
-        // services.AddSingleton(provider => (IPaymentMethodViewExtension)ActivatorUtilities.CreateInstance(provider,
-        //     typeof(BitcoinPaymentMethodViewExtension), pmi));
-
         services.AddSingleton(s => ConfigureTronUSDtLikeConfiguration(s, networkProvider.NetworkType));
         services.AddSingleton<TronUSDtRPCProvider>();
 
