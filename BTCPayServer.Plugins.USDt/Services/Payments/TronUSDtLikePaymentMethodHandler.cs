@@ -19,7 +19,7 @@ public class TronUSDtLikePaymentMethodHandler(
     private readonly StoreRepository _storeRepository = storeRepository;
     private readonly TronUSDtRPCProvider _tronUSDtRpcProvider = tronUSDtRpcProvider;
 
-    internal static PaymentType TronUSDtLike => TronUSDtPaymentType.Instance;
+    internal static PaymentType TronUSDtLike => TronUSDtLikePaymentType.Instance;
     public TronUSDtLikeSpecificBtcPayNetwork Network { get; } = network;
 
     public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;

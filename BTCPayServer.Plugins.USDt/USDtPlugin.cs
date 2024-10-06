@@ -51,7 +51,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             ? "https://tronscan.org/#/transaction/{0}"
             : "https://nile.tronscan.org/#/transaction/{0}";
 
-        var pmi = TronUSDtPaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
+        var pmi = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
         services.AddBTCPayNetwork(network)
             .AddTransactionLinkProvider(network.CryptoCode, new TronUSDtTransactionLinkProvider(blockExplorerLink));
 
