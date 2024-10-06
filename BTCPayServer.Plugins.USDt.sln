@@ -31,6 +31,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.USDt", "BTCPayServer.Plugins.USDt\BTCPayServer.Plugins.USDt.csproj", "{437BFB39-5C8D-402B-A4ED-CD27604A7845}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins common", "Plugins common", "{FA57CDB6-8A11-48E3-B342-626DA65140A2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution items", "Solution items", "{99F3340A-37C7-4B25-987C-6FFD6FC3B842}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
 	EndProjectSection
