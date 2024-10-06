@@ -18,7 +18,7 @@ public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider
         return tronUSDtRpcProvider.Summaries.Select(pair => new TronUSDtSyncStatus
         {
             Summary = pair.Value,
-            CryptoCode = pair.Key
+            PaymentMethodId = pair.Key.ToString()
         });
     }
 }

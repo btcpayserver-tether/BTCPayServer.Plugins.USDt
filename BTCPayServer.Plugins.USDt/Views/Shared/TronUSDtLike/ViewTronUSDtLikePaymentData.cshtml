@@ -1,6 +1,7 @@
 @inject DisplayFormatter DisplayFormatter
 @using System.Globalization
 @using BTCPayServer.Components.TruncateCenter
+@using BTCPayServer.Plugins.USDt.Configuration
 @using BTCPayServer.Plugins.USDt.Controllers.ViewModels
 @using BTCPayServer.Plugins.USDt.Services.Payments
 @using BTCPayServer.Services
@@ -8,6 +9,7 @@
 @model IEnumerable<BTCPayServer.Services.Invoices.PaymentEntity>
 @inject TransactionLinkProviders TransactionLinkProviders
 @inject PaymentMethodHandlerDictionary handlers
+@inject USDtPluginConfiguration pluginConfiguration
 
 @{
     var payments = Model.Select(payment =>
@@ -19,13 +21,13 @@
 
         var m = new TronUSDtPaymentViewModel
         {
-            Crypto = handler.Network.CryptoCode,
+            CurrencyDisplayName = pluginConfiguration.TronUSDtLikeConfigurationItems[handler.PaymentMethodId].CurrencyDisplayName,
             DepositAddress = payment.Destination,
             Amount = payment.Value.ToString(CultureInfo.InvariantCulture),
             TransactionId = onChainPaymentData.TransactionId,
             ReceivedTime = payment.ReceivedTime,
             Confirmations = confirmationCount.ToString(CultureInfo.InvariantCulture),
-            TransactionLink = TransactionLinkProviders.GetTransactionLink(handler.Network.CryptoCode, onChainPaymentData.TransactionId)
+            TransactionLink = TransactionLinkProviders.GetTransactionLink(payment.PaymentMethodId, onChainPaymentData.TransactionId)
         };
         return m;
     }).Where(c => c != null).Cast<TronUSDtPaymentViewModel>().ToList();
@@ -49,7 +51,7 @@
             @foreach (var payment in payments)
             {
                 <tr >
-                    <td>@payment.Crypto</td>
+                    <td>@payment.CurrencyDisplayName</td>
                     <td>
                         <vc:truncate-center text="@payment.DepositAddress" classes="truncate-center-id"/>
                     </td>
@@ -58,7 +60,7 @@
                     </td>
                     <td class="text-end">@payment.Confirmations</td>
                     <td class="payment-value text-end text-nowrap">
-                        <span data-sensitive class="text-success">@DisplayFormatter.Currency(payment.Amount, payment.Crypto)</span>
+                        <span data-sensitive class="text-success">@DisplayFormatter.Currency(payment.Amount, payment.CurrencyDisplayName)</span>
                     </td>
                 </tr>
             }

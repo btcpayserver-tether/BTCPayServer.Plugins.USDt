@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BTCPayServer.Plugins.USDt.Configuration;
+namespace BTCPayServer.Plugins.USDt.Configuration.Tron;
 
 public class TronUSDtLikeServerSettings
 {

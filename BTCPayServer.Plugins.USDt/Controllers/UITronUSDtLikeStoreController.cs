@@ -8,6 +8,7 @@ using BTCPayServer.Client;
 using BTCPayServer.Data;
 using BTCPayServer.Filters;
 using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
@@ -28,7 +29,7 @@ public class UITronUSDtLikeStoreController(
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
-    BTCPayNetworkProvider btcPayNetworkProvider) : Controller
+    USDtPluginConfiguration pluginConfiguration) : Controller
 {
     private StoreData StoreData => HttpContext.GetStoreData();
 
@@ -44,19 +45,17 @@ public class UITronUSDtLikeStoreController(
     public ViewTronUSDtStoreOptionsViewModel GetVM(StoreData storeData)
     {
         var excludeFilters = storeData.GetStoreBlob().GetExcludedPaymentMethods();
-        var tronUSDtLikeNetwork = btcPayNetworkProvider.GetAll().OfType<TronUSDtLikeSpecificBtcPayNetwork>();
 
         var vm = new ViewTronUSDtStoreOptionsViewModel();
-        foreach (var network in tronUSDtLikeNetwork)
+        foreach (var item in pluginConfiguration.TronUSDtLikeConfigurationItems.Values)
         {
-            var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
-            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
-
+            var pmi = item.GetPaymentMethodId();
+            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(pmi, handlers);
             vm.Items.Add(new ViewTronUSDtStoreOptionItemViewModel
             {
-                CryptoCode = network.CryptoCode,
-                DisplayName = network.DisplayName,
-                Enabled = matchedPaymentMethod != null && !excludeFilters.Match(paymentMethodId),
+                PaymentMethodId = pmi,
+                DisplayName = item.DisplayName,
+                Enabled = matchedPaymentMethod != null && !excludeFilters.Match(pmi),
                 Addresses = matchedPaymentMethod == null ? Array.Empty<string>() : matchedPaymentMethod.Addresses
             });
         }
@@ -65,16 +64,14 @@ public class UITronUSDtLikeStoreController(
     }
 
 
-    [HttpGet("{cryptoCode}")]
-    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(string cryptoCode)
+    [HttpGet("{paymentMethodId}")]
+    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
     {
-        var network = btcPayNetworkProvider.GetNetwork<TronUSDtLikeSpecificBtcPayNetwork>(cryptoCode);
-        if (network is null) return NotFound();
-
+        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+            return NotFound();
+        
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
-        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
-        var matchedPaymentMethodConfig =
-            StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var matchedPaymentMethodConfig =  StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
             return View(new EditTronUSDtPaymentMethodViewModel
@@ -83,7 +80,7 @@ public class UITronUSDtLikeStoreController(
             });
 
         var balances =
-            await tronUSDtRpcProvider.GetBalances(cryptoCode, [.. matchedPaymentMethodConfig.Addresses]);
+            await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
             await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
@@ -103,17 +100,15 @@ public class UITronUSDtLikeStoreController(
         });
     }
 
-    [HttpPost("{cryptoCode}/addresses/{address}/delete")]
+    [HttpPost("{paymentMethodId}/addresses/{address}/delete")]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-    public async Task<IActionResult> DeleteAddress(string storeId, string cryptoCode, string address)
+    public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
     {
-        var network = btcPayNetworkProvider.GetNetwork<TronUSDtLikeSpecificBtcPayNetwork>(cryptoCode);
-        if (network is null) return NotFound();
+        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+            return NotFound();
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
-
         var currentPaymentMethodConfig =
             StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         if (currentPaymentMethodConfig is null) return NotFound();
@@ -129,24 +124,21 @@ public class UITronUSDtLikeStoreController(
             Severity = StatusMessageModel.StatusSeverity.Success
         });
 
-        return RedirectToAction(nameof(GetStoreTronUSDtLikePaymentMethod), new { storeId, cryptoCode });
+        return RedirectToAction(nameof(GetStoreTronUSDtLikePaymentMethod), new { storeId, paymentMethodId });
     }
 
-    [HttpPost("{cryptoCode}")]
+    [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
     public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(EditTronUSDtPaymentMethodViewModel viewModel,
-        string cryptoCode)
+        PaymentMethodId paymentMethodId)
     {
-        var network = btcPayNetworkProvider.GetNetwork<TronUSDtLikeSpecificBtcPayNetwork>(cryptoCode);
-        if (network is null) return NotFound();
+        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+            return NotFound();
 
-        if (!ModelState.IsValid) return await GetStoreTronUSDtLikePaymentMethod(cryptoCode);
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var paymentMethodId = TronUSDtLikePaymentType.Instance.GetPaymentMethodId(network.CryptoCode);
-        var currentPaymentMethodConfig =
-            StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         currentPaymentMethodConfig ??= new TronUSDtPaymentMethodConfig();
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
@@ -168,11 +160,11 @@ public class UITronUSDtLikeStoreController(
             {
                 TempData.SetStatusMessageModel(new StatusMessageModel
                 {
-                    Message = $"{viewModel.Address} is already configured to being tracked for {cryptoCode}.",
+                    Message = $"{viewModel.Address} is already configured to being tracked for {paymentMethodId}.",
                     Severity = StatusMessageModel.StatusSeverity.Error
                 });
 
-                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, cryptoCode = cryptoCode });
+                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId = paymentMethodId });
             }
 
             currentPaymentMethodConfig.Addresses =
@@ -183,7 +175,7 @@ public class UITronUSDtLikeStoreController(
 
             TempData.SetStatusMessageModel(new StatusMessageModel
             {
-                Message = $"{viewModel.Address} is now being tracked for {cryptoCode}",
+                Message = $"{viewModel.Address} is now being tracked for {paymentMethodId}",
                 Severity = StatusMessageModel.StatusSeverity.Success
             });
         }
@@ -193,7 +185,7 @@ public class UITronUSDtLikeStoreController(
 
             TempData.SetStatusMessageModel(new StatusMessageModel
             {
-                Message = $"{cryptoCode} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
+                Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
                 Severity = StatusMessageModel.StatusSeverity.Success
             });
         }
@@ -203,6 +195,6 @@ public class UITronUSDtLikeStoreController(
         await storeRepository.UpdateStore(store);
 
 
-        return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, cryptoCode });
+        return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
     }
 }

@@ -1,6 +1,7 @@
 @using BTCPayServer
 @using BTCPayServer.Abstractions.Contracts
 @using BTCPayServer.Data
+@using BTCPayServer.Payments
 @using BTCPayServer.Plugins.USDt.Configuration
 @using BTCPayServer.Plugins.USDt.Controllers
 @using BTCPayServer.Plugins.USDt.Services
@@ -21,13 +22,13 @@
 
     foreach (var item in result.Items)
     {
-        var isAvailable = TronUSDtRPCProvider.IsAvailable(item.CryptoCode);
+        var isAvailable = TronUSDtRPCProvider.IsAvailable(item.PaymentMethodId);
         var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
                        nameof(UITronUSDtLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
-                       ViewContext.RouteData.Values.TryGetValue("cryptoCode", out var cryptoCode) && cryptoCode is not null && cryptoCode.ToString() == item.DisplayName;
+                       ViewContext.RouteData.Values.TryGetValue("paymentMethodId", out var paymentMethodId) && paymentMethodId is not null && new PaymentMethodId((string)paymentMethodId) == item.PaymentMethodId;
         <li class="nav-item">
             <a class="nav-link @(isActive ? "active" : "")"
-               asp-route-cryptoCode="@item.CryptoCode"
+               asp-route-paymentMethodId="@item.PaymentMethodId"
                asp-route-storeId="@storeId"
                asp-action="GetStoreTronUSDtLikePaymentMethod"
                asp-controller="UITronUSDtLikeStore">

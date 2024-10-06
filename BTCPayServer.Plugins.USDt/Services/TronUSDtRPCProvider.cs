@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Plugins.USDt.Services.Events;
 using BTCPayServer.Services;
 using NBitcoin;
@@ -22,29 +23,26 @@ public class TronUSDtRPCProvider
     private readonly EventAggregator _eventAggregator;
     private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly BTCPayNetworkProvider _networkProvider;
     private readonly SettingsRepository _settingsRepository;
 
     private readonly USDtPluginConfiguration _usdtPluginConfiguration;
-    private ImmutableDictionary<string, RpcClient>? _walletRpcClients;
+    private ImmutableDictionary<PaymentMethodId, RpcClient>? _walletRpcClients;
 
     public TronUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
         EventAggregator eventAggregator,
         SettingsRepository settingsRepository,
-        BTCPayNetworkProvider networkProvider,
         IHttpClientFactory httpClientFactory)
     {
         _usdtPluginConfiguration = usdtPluginConfiguration;
         _eventAggregator = eventAggregator;
         _settingsRepository = settingsRepository;
-        _networkProvider = networkProvider;
         _httpClientFactory = httpClientFactory;
 
         _eventAggregatorSubscription = _eventAggregator.Subscribe<TronUSDtSettingsChanged>(_ => LoadClientsFromConfiguration());
         LoadClientsFromConfiguration();
     }
 
-    public ConcurrentDictionary<string, TronUSDtLikeSummary> Summaries { get; } = new();
+    public ConcurrentDictionary<PaymentMethodId, TronUSDtLikeSummary> Summaries { get; } = new();
 
     private void LoadClientsFromConfiguration()
     {
@@ -61,18 +59,17 @@ public class TronUSDtRPCProvider
         }
     }
 
-    public Web3 GetWeb3Client(string cryptoCode)
+    public Web3 GetWeb3Client(PaymentMethodId pmi)
     {
         lock (this)
         {
-            return new Web3(_walletRpcClients[cryptoCode]);
+            return new Web3(_walletRpcClients![pmi]);
         }
     }
 
-    public bool IsAvailable(string cryptoCode)
+    public bool IsAvailable(PaymentMethodId pmi)
     {
-        cryptoCode = cryptoCode.ToUpperInvariant();
-        return Summaries.ContainsKey(cryptoCode) && IsAvailable(Summaries[cryptoCode]);
+        return Summaries.ContainsKey(pmi) && IsAvailable(Summaries[pmi]);
     }
 
     private static bool IsAvailable(TronUSDtLikeSummary summary)
@@ -80,15 +77,12 @@ public class TronUSDtRPCProvider
         return summary is { Synced: true, RpcAvailable: true };
     }
 
-    public async Task<(string, decimal?)[]> GetBalances(string cryptoCode, IEnumerable<string> addresses)
+    public async Task<(string, decimal?)[]> GetBalances(PaymentMethodId pmi, IEnumerable<string> addresses)
     {
-        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[cryptoCode];
-
-        var tokenService = new StandardTokenService(GetWeb3Client(cryptoCode),
-            TronUSDtAddressHelper.Base58ToHex(configuration.SmartContractAddress));
-
+        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
+        var tokenService = new StandardTokenService(GetWeb3Client(pmi),  TronUSDtAddressHelper.Base58ToHex(configuration.SmartContractAddress));
         var hexAddresses = addresses.Select(TronUSDtAddressHelper.Base58ToHex);
-        var divisibility = _networkProvider.GetNetwork(cryptoCode).Divisibility;
+
 
         List<(string, decimal?)> results = [];
         foreach (var address in hexAddresses)
@@ -97,7 +91,7 @@ public class TronUSDtRPCProvider
             try
             {
                 var balanceResult = await tokenService.BalanceOfQueryAsync(address);
-                var divisor = BigInteger.Pow(10, divisibility);
+                var divisor = BigInteger.Pow(10, configuration.Divisibility);
                 var quotient = balanceResult / divisor;
                 var remainder = balanceResult % divisor;
                 var fractionalPart = (decimal)remainder / (decimal)divisor;
@@ -112,13 +106,12 @@ public class TronUSDtRPCProvider
         return results.ToArray();
     }
 
-    public async Task UpdateSummary(string cryptoCode)
+    public async Task UpdateSummary(PaymentMethodId pmi)
     {
-        cryptoCode = cryptoCode.ToUpperInvariant();
-        if (!_walletRpcClients.TryGetValue(cryptoCode, out _)) return;
-
-        var listenerState =
-            await _settingsRepository.GetSettingAsync<TronUSDtListenerState>(ListenerStateSettingKey(cryptoCode));
+        if (!_walletRpcClients!.TryGetValue(pmi, out _)) return;
+        
+        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
+        var listenerState = await _settingsRepository.GetSettingAsync<TronUSDtListenerState>(ListenerStateSettingKey(configuration));
         if (listenerState == null) return;
 
         var summary = new TronUSDtLikeSummary();
@@ -126,7 +119,7 @@ public class TronUSDtRPCProvider
         {
             summary.LatestBlockScanned = listenerState.LastBlockHeight;
 
-            var web3Client = GetWeb3Client(cryptoCode);
+            var web3Client = GetWeb3Client(pmi);
             var syncingOutput = await web3Client.Eth.Syncing.SendRequestAsync();
             if (syncingOutput.IsSyncing)
             {
@@ -152,16 +145,16 @@ public class TronUSDtRPCProvider
             summary.RpcAvailable = false;
         }
 
-        var changed = !Summaries.ContainsKey(cryptoCode) || IsAvailable(cryptoCode) != IsAvailable(summary);
+        var changed = !Summaries.ContainsKey(pmi) || IsAvailable(pmi) != IsAvailable(summary);
 
-        Summaries.AddOrReplace(cryptoCode, summary);
+        Summaries.AddOrReplace(pmi, summary);
         if (changed)
-            _eventAggregator.Publish(new TronUSDtDaemonStateChanged { Summary = summary, CryptoCode = cryptoCode });
+            _eventAggregator.Publish(new TronUSDtDaemonStateChanged { Summary = summary, PaymentMethodId = pmi });
     }
 
-    public static string ListenerStateSettingKey(string cryptoCode)
+    public static string ListenerStateSettingKey(TronUSDtLikeConfigurationItem config)
     {
-        return "USDT_LISTENER_" + cryptoCode;
+        return $"{config.GetSettingPrefix()}_LISTENER_STATE";
     }
 
     public class TronUSDtLikeSummary

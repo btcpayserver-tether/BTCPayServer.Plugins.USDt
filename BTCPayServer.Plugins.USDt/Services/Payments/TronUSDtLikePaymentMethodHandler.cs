@@ -2,48 +2,44 @@ using System;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Services.Invoices;
-using BTCPayServer.Services.Stores;
+using BTCPayServer.Services.Rates;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class TronUSDtLikePaymentMethodHandler(
-    TronUSDtLikeSpecificBtcPayNetwork network,
+    TronUSDtLikeConfigurationItem configurationItem,
     TronUSDtRPCProvider tronUSDtRpcProvider,
-    InvoiceRepository invoiceRepository,
-    StoreRepository storeRepository) : IPaymentMethodHandler
+    CurrencyNameTable currencyNameTable,
+    InvoiceRepository invoiceRepository) : IPaymentMethodHandler
 {
-    private readonly InvoiceRepository _invoiceRepository = invoiceRepository;
-    private readonly StoreRepository _storeRepository = storeRepository;
-    private readonly TronUSDtRPCProvider _tronUSDtRpcProvider = tronUSDtRpcProvider;
-
-    internal static PaymentType TronUSDtLike => TronUSDtLikePaymentType.Instance;
-    public TronUSDtLikeSpecificBtcPayNetwork Network { get; } = network;
-
     public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;
 
-    public PaymentMethodId PaymentMethodId { get; } = TronUSDtLike.GetPaymentMethodId(network.CryptoCode);
+    public PaymentMethodId PaymentMethodId { get; } = configurationItem.GetPaymentMethodId();
 
     public Task BeforeFetchingRates(PaymentMethodContext context)
     {
-        context.Prompt.Currency = Network.CryptoCode;
-        context.Prompt.Divisibility = Network.Divisibility;
+        context.Prompt.Currency = configurationItem.Currency;
+        context.Prompt.Divisibility = configurationItem.Divisibility;
+        context.Prompt.RateDivisibility = currencyNameTable.GetCurrencyData(context.Prompt.Currency, false).Divisibility;
         return Task.CompletedTask;
     }
 
     public async Task ConfigurePrompt(PaymentMethodContext context)
     {
-        if (!_tronUSDtRpcProvider.IsAvailable(Network.CryptoCode))
+        if (!tronUSDtRpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
         var details = new TronUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
-                                   .GetOneNotReservedAddress(context.PaymentMethodId, _invoiceRepository) ??
+                                   .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
                                throw new PaymentMethodUnavailableException("All your TRON addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
-        context.Prompt.PaymentMethodFee = 0; //TODO: vbn
+        context.Prompt.PaymentMethodFee = 0; 
         context.Prompt.Details = JObject.FromObject(details, Serializer);
     }
 

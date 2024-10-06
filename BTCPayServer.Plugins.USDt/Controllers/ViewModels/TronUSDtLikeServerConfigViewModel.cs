@@ -1,5 +1,6 @@
 using System;
 using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Validation;
 
 namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;

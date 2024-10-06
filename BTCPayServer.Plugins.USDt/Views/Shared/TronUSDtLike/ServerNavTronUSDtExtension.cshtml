@@ -13,7 +13,7 @@
 @inject IScopeProvider ScopeProvider
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
-    var isSettingsActive = ViewData.IsActiveCategory(typeof(ServerNavPages)) && !ViewData.IsActivePage([ServerNavPages.Plugins]);
+    var isSettingsActive = ViewData.IsCategoryActive(typeof(ServerNavPages)) && !ViewData.IsPageActive([ServerNavPages.Plugins]);
     var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
                    nameof(UITronUSDtLikeServerController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
 }
