@@ -35,7 +35,7 @@
         </p>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
-              asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
+              asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")"
               class="mt-4" enctype="multipart/form-data">
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <input asp-for="Address" type="text" class="form-control" placeholder="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL" style="flex: 1 1 14rem">
@@ -76,7 +76,7 @@
                         <td class="actions-col" permission="@Policies.CanModifyStoreSettings">
                             <form method="post" asp-action="DeleteAddress"
                                   asp-route-storeId="@Context.GetRouteValue("storeId")"
-                                  asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")"
+                                  asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")"
                                   asp-route-address="@address.Value"
                                   enctype="multipart/form-data">
                                 <input class="btn btn-link p-0" type="submit" value="Remove"/>
@@ -117,7 +117,7 @@
         <partial name="_Confirm" model="@(new ConfirmModel("Remove store user", "This action will prevent the user from accessing this store and its settings. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
-              asp-route-cryptoCode="@Context.GetRouteValue("cryptoCode")" class="mt-4" enctype="multipart/form-data">
+              asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")" class="mt-4" enctype="multipart/form-data">
 
             <div class="d-flex mb-3">
                 <input asp-for="Enabled" type="checkbox" class="btcpay-toggle me-3"/>
