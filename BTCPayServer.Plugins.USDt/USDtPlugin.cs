@@ -64,9 +64,6 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddHostedService<TronUSDtLikeSummaryUpdaterHostedService>();
         services.AddHostedService<TronUSDtListener>();
 
-        services.AddSingleton(provider => (IPaymentMethodViewExtension)ActivatorUtilities.CreateInstance(provider,
-            typeof(BitcoinPaymentMethodViewExtension), tronUSDtPaymentMethodId));
-
         services.AddSingleton(new DefaultRules(tronUSDtConfiguration.DefaultRateRules));
 
         services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtLikePaymentMethodHandler),
@@ -74,14 +71,14 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddSingleton<IPaymentLinkExtension>(provider =>
             (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentLinkExtension), tronUSDtPaymentMethodId));
         services.AddSingleton(provider =>
-            (IPaymentModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentModelExtension),
+            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtCheckoutModelExtension),
                 tronUSDtConfiguration));
 
         // For future usages (multiple TRC20)
         //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDt/StoreNavTronUSDtExtension", "store-integrations-nav"));
-        services.AddSingleton<IUIExtension>(new UIExtension("TronUSDtLike/ServerNavTronUSDtExtension", "server-nav"));
-        services.AddSingleton<IUIExtension>(new UIExtension("TronUSDtLike/StoreWalletsNavTronUSDtExtension", "store-wallets-nav"));
-        services.AddSingleton<IUIExtension>(new UIExtension("TronUSDtLike/ViewTronUSDtLikePaymentData", "store-invoices-payments"));
+        services.AddUIExtension("TronUSDtLike/ServerNavTronUSDtExtension", "server-nav");
+        services.AddUIExtension("TronUSDtLike/StoreWalletsNavTronUSDtExtension", "store-wallets-nav");
+        services.AddUIExtension("TronUSDtLike/ViewTronUSDtLikePaymentData", "store-invoices-payments");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
     }
 
