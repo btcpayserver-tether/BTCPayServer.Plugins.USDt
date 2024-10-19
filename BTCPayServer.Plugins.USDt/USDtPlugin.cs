@@ -78,9 +78,10 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         // For future usages (multiple TRC20)
         //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDt/StoreNavTronUSDtExtension", "store-integrations-nav"));
-        services.AddUIExtension("TronUSDtLike/ServerNavTronUSDtExtension", "server-nav");
-        services.AddUIExtension("TronUSDtLike/StoreWalletsNavTronUSDtExtension", "store-wallets-nav");
-        services.AddUIExtension("TronUSDtLike/ViewTronUSDtLikePaymentData", "store-invoices-payments");
+        services.AddUIExtension("server-nav","TronUSDtLike/ServerNavTronUSDtExtension");
+        services.AddUIExtension("store-wallets-nav", "TronUSDtLike/StoreWalletsNavTronUSDtExtension");
+        services.AddUIExtension("store-invoices-payments", "TronUSDtLike/ViewTronUSDtLikePaymentData");
+        services.AddUIExtension("checkout-payment-method", "TronUSDtLike/EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
     }
 
