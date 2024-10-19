@@ -7,20 +7,13 @@ using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtLikePaymentData : CryptoPaymentData
+public class TronUSDtLikePaymentData
 {
     public int ConfirmationCount { get; set; }
     public required string TransactionId { get; init; }
     public BigInteger BlockHeight { get; init; }
     public required string To { get; init; } // For future usages
     public required string From { get; init; } // For future usages
-
-    public string GetPaymentProof()
-    {
-#pragma warning disable CS8603 // Possible null reference return.
-        return null;
-#pragma warning restore CS8603 // Possible null reference return.
-    }
 
     public bool PaymentConfirmed(SpeedPolicy speedPolicy)
     {

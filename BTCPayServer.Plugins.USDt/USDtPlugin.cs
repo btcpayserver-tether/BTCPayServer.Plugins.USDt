@@ -73,6 +73,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddSingleton(provider =>
             (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtCheckoutModelExtension),
                 tronUSDtConfiguration));
+        
+        services.AddDefaultPrettyName(tronUSDtPaymentMethodId, tronUSDtConfiguration.DisplayName);
 
         // For future usages (multiple TRC20)
         //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDt/StoreNavTronUSDtExtension", "store-integrations-nav"));
