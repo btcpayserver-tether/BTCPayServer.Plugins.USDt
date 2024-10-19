@@ -124,7 +124,7 @@ public class TronUSDtListener(
                         else
                         {
                             logger.LogInformation("Block not present on node yet {BlockNumber}", listenerState.LastBlockHeight);
-                            Thread.Sleep(500);
+                            Thread.Sleep(1_000);
                         }
                     }
 
