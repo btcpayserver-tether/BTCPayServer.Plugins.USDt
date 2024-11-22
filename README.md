@@ -42,7 +42,7 @@ This plugin aims to cover USDt payment over different chains, a rigorous naming 
 
 ## 💚 Support
 
-For any questions, issues, or feedback related to the BTCPay Server USDt Plugin, please [open an issue](https://github.com/b0l0k/BTCPayServer.Plugins.TronUSDt/issues) in this repository.
+For any questions, issues, or feedback related to the BTCPay Server USDt Plugin, please [open an issue](https://github.com/btcpayserver-tether/BTCPayServer.Plugins.TronUSDt/issues) in this repository.
 
 ## 📝 License
 
