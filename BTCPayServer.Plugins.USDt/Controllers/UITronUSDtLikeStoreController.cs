@@ -143,41 +143,44 @@ public class UITronUSDtLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            // if (TronUSDtAddressHelper.IsValid(viewModel.Address) == false)
-            // {
-            //     TempData.SetStatusMessageModel(new StatusMessageModel
-            //     {
-            //         Message = $"{viewModel.Address} is not a TRON address (Base58 format expected).",
-            //         Severity = StatusMessageModel.StatusSeverity.Error
-            //     });
-            //
-            //
-            //     return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, cryptoCode });
-            // }
-
-            //todo check tron format
-            if (currentPaymentMethodConfig.Addresses.Contains(viewModel.Address))
+            var addresses = viewModel.Address.Split([',', ';', ' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                .Where(TronUSDtAddressHelper.IsValid)
+                .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
+            
+            if(addresses.Any() == false)
             {
                 TempData.SetStatusMessageModel(new StatusMessageModel
                 {
-                    Message = $"{viewModel.Address} is already configured to being tracked for {paymentMethodId}.",
+                    Message = "No addresses were added. Please make sure the addresses are valid and not already being tracked.",
                     Severity = StatusMessageModel.StatusSeverity.Error
                 });
 
                 return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId = paymentMethodId });
             }
-
+            
             currentPaymentMethodConfig.Addresses =
             [
                 .. currentPaymentMethodConfig.Addresses,
-                .. new[] { viewModel.Address }
+                .. addresses
             ];
 
-            TempData.SetStatusMessageModel(new StatusMessageModel
+
+            if (addresses.Length == 1)
             {
-                Message = $"{viewModel.Address} is now being tracked for {paymentMethodId}",
-                Severity = StatusMessageModel.StatusSeverity.Success
-            });
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = $"{addresses[0]} is now being tracked for {paymentMethodId}",
+                    Severity = StatusMessageModel.StatusSeverity.Success
+                });
+            }
+            else
+            {
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = $"{addresses.Length} addresses were added to {paymentMethodId}",
+                    Severity = StatusMessageModel.StatusSeverity.Success
+                });
+            }
         }
         else if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
         {

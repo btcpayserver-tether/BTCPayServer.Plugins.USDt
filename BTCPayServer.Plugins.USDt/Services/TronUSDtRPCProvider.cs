@@ -81,13 +81,11 @@ public class TronUSDtRPCProvider
     {
         var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
         var tokenService = new StandardTokenService(GetWeb3Client(pmi),  TronUSDtAddressHelper.Base58ToHex(configuration.SmartContractAddress));
-        var hexAddresses = addresses.Select(TronUSDtAddressHelper.Base58ToHex);
-
+        var hexAddresses = addresses.Select(b => (b, TronUSDtAddressHelper.Base58ToHex(b)));
 
         List<(string, decimal?)> results = [];
-        foreach (var address in hexAddresses)
+        foreach (var (base58Address, address) in hexAddresses)
         {
-            var base58Address = TronUSDtAddressHelper.HexToBase58(address);
             try
             {
                 var balanceResult = await tokenService.BalanceOfQueryAsync(address);
