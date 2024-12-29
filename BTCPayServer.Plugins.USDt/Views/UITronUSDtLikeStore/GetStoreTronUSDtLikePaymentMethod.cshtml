@@ -39,7 +39,10 @@
               class="mt-4" enctype="multipart/form-data">
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <input asp-for="Address" type="text" class="form-control" placeholder="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL" style="flex: 1 1 14rem">
-                <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address</button>
+                <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address(es)</button>
+            </div>
+            <div class="form-text">
+                You can add multiple addresses separated by a comma or a new line.
             </div>
         </form>
         @if (Model.Addresses.Any())
