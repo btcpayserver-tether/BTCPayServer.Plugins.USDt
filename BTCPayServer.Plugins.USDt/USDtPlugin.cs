@@ -9,6 +9,7 @@ using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
+using BTCPayServer.Plugins.USDt.Controllers;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Rates;
@@ -83,6 +84,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("store-invoices-payments", "TronUSDtLike/ViewTronUSDtLikePaymentData");
         services.AddUIExtension("checkout-payment-method", "TronUSDtLike/EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
+        
+        services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
 
 
