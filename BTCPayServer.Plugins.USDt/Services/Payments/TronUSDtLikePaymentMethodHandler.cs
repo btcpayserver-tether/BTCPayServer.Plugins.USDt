@@ -25,7 +25,7 @@ public class TronUSDtLikePaymentMethodHandler(
     {
         context.Prompt.Currency = configurationItem.Currency;
         context.Prompt.Divisibility = configurationItem.Divisibility;
-        context.Prompt.RateDivisibility = currencyNameTable.GetCurrencyData(context.Prompt.Currency, false).Divisibility;
+        context.Prompt.RateDivisibility = null;
         return Task.CompletedTask;
     }
 

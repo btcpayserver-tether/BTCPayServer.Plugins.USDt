@@ -54,7 +54,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         {
             Code = Constants.USDtCurrency,
             Name = Constants.USDtCurrencyDisplayName,
-            Divisibility = 2,
+            Divisibility = 6,
             Symbol = Constants.USDtCurrencyDisplayName,
             Crypto = true
         });
