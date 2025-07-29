@@ -23,6 +23,7 @@ using Nethereum.BlockchainProcessing.BlockStorage.Entities.Mapping;
 using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
+using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 
@@ -131,6 +132,16 @@ public class TronUSDtListener(
 
                     await SetTrackingState(configurationItem, listenerState);
                 }
+            }
+            catch(RpcClientTimeoutException e)
+            {
+                logger.LogWarning("Timeout while indexing, is the node running? Retrying in 10 seconds");
+                Thread.Sleep(5_000);
+            }
+            catch(RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") == true)
+            {
+                logger.LogWarning("Rate limit exceeded while indexing, use a Tron node with higher limits if possible. Retrying in 10 seconds");
+                Thread.Sleep(10_000);
             }
             catch (Exception e)
             {
