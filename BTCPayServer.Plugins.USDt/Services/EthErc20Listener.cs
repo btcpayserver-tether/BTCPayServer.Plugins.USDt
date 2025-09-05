@@ -51,7 +51,10 @@ public class EthErc20Listener(
         if (usdtPluginConfiguration.EthereumErc20LikeConfigurationItems.Count == 0) return Task.CompletedTask;
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _ = LoopIndex(usdtPluginConfiguration.EthereumErc20LikeConfigurationItems.Single().Value, _cts.Token);
+        foreach (var kv in usdtPluginConfiguration.EthereumErc20LikeConfigurationItems)
+        {
+            _ = LoopIndex(kv.Value, _cts.Token);
+        }
         return Task.CompletedTask;
     }
 
@@ -70,6 +73,7 @@ public class EthErc20Listener(
             {
                 var listenerState = await LoadTrackingState(configurationItem);
                 var pmi = configurationItem.GetPaymentMethodId();
+                using var _ = logger.BeginScope("ETH-ERC20 PMI: {PaymentMethodId}", pmi);
                 
                 var web3Client = rpcProvider.GetWeb3Client(pmi);
                 if (listenerState == null)
@@ -79,7 +83,7 @@ public class EthErc20Listener(
                     var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
                         BlockParameter.CreateLatest());
 
-                    listenerState = new EthErc20ListenerState { LastBlockHeight = (long)latestBlockNumber.Value };
+                    listenerState = new EthErc20ListenerState { LastBlockHeight = (long)latestBlockNumber.Value - 1 };
                     await SetTrackingState(configurationItem, listenerState);
                 }
                 else
@@ -105,7 +109,7 @@ public class EthErc20Listener(
                             listenerState.LastBlockHeight = (long)lastBlockNumber.Value;
                         }
 
-                        Thread.Sleep(30_000);
+                        await Task.Delay(30_000, stoppingToken);
                     }
                     else
                     {
@@ -123,7 +127,7 @@ public class EthErc20Listener(
                         else
                         {
                             logger.LogInformation("Block not present on node yet {BlockNumber}", listenerState.LastBlockHeight);
-                            Thread.Sleep(1_000);
+                            await Task.Delay(1_000, stoppingToken);
                         }
                     }
 
@@ -134,17 +138,17 @@ public class EthErc20Listener(
             catch(RpcClientTimeoutException)
             {
                 logger.LogWarning("Timeout while indexing, is the node running? Retrying in 10 seconds");
-                Thread.Sleep(5_000);
+                await Task.Delay(5_000, stoppingToken);
             }
             catch(RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") == true)
             {
                 logger.LogWarning("Rate limit exceeded while indexing, use an Ethereum node with higher limits if possible. Retrying in 10 seconds");
-                Thread.Sleep(10_000);
+                await Task.Delay(10_000, stoppingToken);
             }
             catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while indexing");
-                Thread.Sleep(10_000);
+                await Task.Delay(10_000, stoppingToken);
             }
     }
 
@@ -192,7 +196,7 @@ public class EthErc20Listener(
             .ToDictionary(i => i.Prompt!.Destination!.ToLowerInvariant(), i => i);
 
         var web3Client = rpcProvider.GetWeb3Client(pmi);
-        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>();
+        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(GetConfig(pmi).SmartContractAddress);
 
         // This is a workaround for the fact that sometimes the event is not indexed yet
         List<EventLog<TransferEventDTO>>? changes;
@@ -206,14 +210,14 @@ public class EthErc20Listener(
                if (changes != null && changes.Count != 0)
                    break;
                
-               Thread.Sleep(250);
+               await Task.Delay(250);
         } while (tries++ < 3);
         
         if(changes == null)
             throw new InvalidOperationException($"Unable to get changes {block.Number}");
 
         var matches = changes
-            .Where(t => t.Log.Removed == false && t.Log.Address.Equals(GetConfig(pmi).SmartContractAddress, StringComparison.InvariantCultureIgnoreCase))
+            .Where(t => t.Log.Removed == false)
             .Where(t => invoicesPerAddress.ContainsKey(t.Event.To.ToLowerInvariant()));
 
         foreach (var t in matches)
@@ -222,18 +226,19 @@ public class EthErc20Listener(
                 invoicesPerAddress[t.Event.To.ToLowerInvariant()];
             await HandlePaymentData(pmi, t.Event.From,
                 t.Event.To,
-                t.Event.Value.ToHexBigInteger().ToLong(),
+                t.Event.Value,
                 $"{t.Log.TransactionHash.Replace("0x", "")}-{t.Log.TransactionIndex}", 0, block.Number.ToLong(),
                 invoice);
         }
 
-        var updatedPaymentEntities = 
-            new BlockingCollection<(PaymentEntity Payment, InvoiceEntity invoice)>();
+        var updatedPaymentEntities = new List<(PaymentEntity Payment, InvoiceEntity invoice)>();
         foreach (var invoice in invoices)
             foreach (var payment in GetPendingErc20Payments(invoice, pmi))
             {
                 var paymentData = handler.ParsePaymentDetails(payment.Details);
-                paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
+                var confDiff = (block.Number.Value - paymentData.BlockHeight);
+                long confs = confDiff < 0 ? 0 : (long)confDiff;
+                paymentData.ConfirmationCount = confs > int.MaxValue ? int.MaxValue : (int)confs;
                 
                 payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
                     ? PaymentStatus.Settled

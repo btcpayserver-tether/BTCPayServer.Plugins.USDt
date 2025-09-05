@@ -52,7 +52,7 @@ public class EthErc20RPCProvider
                 pair => pair.Key,
                 pair =>
                 {
-                    var httpClient = _httpClientFactory.CreateClient($"{pair.Key}client");
+                    var httpClient = _httpClientFactory.CreateClient();
                     var rpcClient = new RpcClient(pair.Value.JsonRpcUri, httpClient);
                     return rpcClient;
                 });
