@@ -113,7 +113,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentMethodHandler),
                 ethUsdtConfiguration));
             services.AddSingleton<IPaymentLinkExtension>(provider =>
-                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentLinkExtension), ethPaymentMethodId));
+                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility));
             services.AddSingleton(provider =>
                 (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20CheckoutModelExtension),
                     ethUsdtConfiguration));
@@ -264,7 +264,26 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 JsonRpcUri = new Uri("https://ethereum.publicnode.com"),
                 BlockExplorerLink = "https://etherscan.io/tx/{0}"
             },
-            _ when chainName == ChainName.Testnet => throw new NotSupportedException(),
+            _ when chainName == ChainName.Testnet => new EthErc20LikeConfigurationItem
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName} Testnet",
+                CryptoImagePath = string.Empty,
+
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+
+                Divisibility = 6,
+                // Token contract should be overridden in server settings for sepolia.
+                SmartContractAddress = "0x0000000000000000000000000000000000000000",
+                // Provide a sensible default public RPC; can be overridden in settings
+                JsonRpcUri = new Uri("https://sepolia.publicnode.com"),
+                BlockExplorerLink = "https://sepolia.etherscan.io/tx/{0}"
+            },
             _ => throw new NotSupportedException()
         };
     }
