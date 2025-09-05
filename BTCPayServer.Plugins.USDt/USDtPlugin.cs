@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
@@ -9,6 +9,7 @@ using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
+using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 using BTCPayServer.Plugins.USDt.Controllers;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
@@ -42,13 +43,28 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         var tronUSDtConfiguration = GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
         tronUSDtConfiguration = OverrideWithServerSettings(tronUSDtConfiguration, settingsRepository);
-        services.AddSingleton(new USDtPluginConfiguration
+
+        // Prepare Ethereum ERC20 (USDT) configuration only on Mainnet for initial scope
+        EthErc20LikeConfigurationItem? ethUsdtConfiguration = null;
+        if (networkProvider.NetworkType == ChainName.Mainnet)
+        {
+            ethUsdtConfiguration = GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
+            ethUsdtConfiguration = OverrideWithServerSettings(ethUsdtConfiguration, settingsRepository);
+        }
+
+        var pluginConfiguration = new USDtPluginConfiguration
         {
             TronUSDtLikeConfigurationItems = new Dictionary<PaymentMethodId, TronUSDtLikeConfigurationItem>
             {
                 { tronUSDtConfiguration.GetPaymentMethodId(), tronUSDtConfiguration }
-            }
-        });
+            },
+            EthereumErc20LikeConfigurationItems = new Dictionary<PaymentMethodId, EthErc20LikeConfigurationItem>()
+        };
+        if (ethUsdtConfiguration is not null)
+        {
+            pluginConfiguration.EthereumErc20LikeConfigurationItems.Add(ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration);
+        }
+        services.AddSingleton(pluginConfiguration);
 
         services.AddCurrencyData(new CurrencyData
         {
@@ -84,6 +100,28 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("store-invoices-payments", "TronUSDtLike/ViewTronUSDtLikePaymentData");
         services.AddUIExtension("checkout-payment-method", "TronUSDtLike/EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
+        
+        // Ethereum ERC20 (USDT) wiring
+        if (ethUsdtConfiguration is not null)
+        {
+            var ethPaymentMethodId = ethUsdtConfiguration.GetPaymentMethodId();
+            services.AddTransactionLinkProvider(ethPaymentMethodId, new EthErc20TransactionLinkProvider(ethUsdtConfiguration.BlockExplorerLink));
+            services.AddSingleton<EthErc20RPCProvider>();
+            services.AddHostedService<EthErc20LikeSummaryUpdaterHostedService>();
+            services.AddHostedService<EthErc20Listener>();
+
+            services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentMethodHandler),
+                ethUsdtConfiguration));
+            services.AddSingleton<IPaymentLinkExtension>(provider =>
+                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentLinkExtension), ethPaymentMethodId));
+            services.AddSingleton(provider =>
+                (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20CheckoutModelExtension),
+                    ethUsdtConfiguration));
+
+            services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
+
+            services.AddSingleton<ISyncSummaryProvider, EthErc20SyncSummaryProvider>();
+        }
         
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
@@ -169,6 +207,65 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
             SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress,
             HttpHeaders = serverSettings.HttpHeaders ?? config.HttpHeaders
+        };
+    }
+
+    // Ethereum ERC20 (USDT) configuration helpers
+    public static EthErc20LikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
+    {
+        var ethConfig = GetEthUSDtHardcodedConfig(networkProvider.NetworkType);
+        ethConfig = OverrideWithAppConfig(ethConfig, configuration);
+        return ethConfig;
+    }
+
+    private static EthErc20LikeConfigurationItem OverrideWithAppConfig(EthErc20LikeConfigurationItem config, IConfiguration configuration)
+    {
+        return config with
+        {
+            JsonRpcUri = configuration.GetOrDefault($"{config.GetSettingPrefix()}_JSONRPC_URI", config.JsonRpcUri),
+            SmartContractAddress = configuration.GetOrDefault($"{config.GetSettingPrefix()}_SMARTCONTRACT_ADDRESS", config.SmartContractAddress)
+        };
+    }
+
+    public static EthErc20LikeConfigurationItem OverrideWithServerSettings(EthErc20LikeConfigurationItem config, ISettingsRepository settingsRepository)
+    {
+        var serverSettings = settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
+
+        if (serverSettings == null)
+            return config;
+
+        return config with
+        {
+            JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
+            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress
+        };
+    }
+
+    private static EthErc20LikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
+    {
+        return chainName switch
+        {
+            _ when chainName == ChainName.Mainnet => new EthErc20LikeConfigurationItem
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName}",
+                CryptoImagePath = string.Empty,
+                
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_BTC = USD_BTC",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+
+                Divisibility = 6,
+                SmartContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                JsonRpcUri = new Uri("https://ethereum.publicnode.com"),
+                BlockExplorerLink = "https://etherscan.io/tx/{0}"
+            },
+            _ when chainName == ChainName.Testnet => throw new NotSupportedException(),
+            _ => throw new NotSupportedException()
         };
     }
 
