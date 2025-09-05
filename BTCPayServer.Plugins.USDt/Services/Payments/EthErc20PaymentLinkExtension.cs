@@ -20,11 +20,14 @@ public class EthErc20PaymentLinkExtension(PaymentMethodId paymentMethodId, strin
         var to = prompt.Destination.ToLowerInvariant();
         var due = prompt.Calculate().Due;
 
-        // Convert due (decimal) to base units using decimals without floating point errors
-        var formatted = due.ToString($"F{_decimals}", CultureInfo.InvariantCulture); // fixed number of decimals
-        var digits = formatted.Replace(".", "");
-        if (!BigInteger.TryParse(digits, out var amountUnits))
-            return null;
+        // Convert due (decimal) to base units using decimals, truncating (floor) to avoid overstating value
+        // scale = 10^decimals using decimal math to preserve precision
+        decimal scale = 1m;
+        for (var i = 0; i < _decimals; i++) scale *= 10m;
+        var scaled = due * scale;
+        if (scaled < 0) scaled = 0; // no negative amounts
+        var unitsDec = decimal.Truncate(scaled);
+        var amountUnits = BigInteger.Parse(unitsDec.ToString("0", CultureInfo.InvariantCulture));
 
         // EIP-681 ERC-20 transfer link: ethereum:{contract}/transfer?address={to}&uint256={amount}
         return $"ethereum:{_contract}/transfer?address={to}&uint256={amountUnits}";
