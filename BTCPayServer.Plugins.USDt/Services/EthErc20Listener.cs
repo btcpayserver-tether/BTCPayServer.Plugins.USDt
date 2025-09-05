@@ -18,6 +18,7 @@ using BTCPayServer.Services.Invoices;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NBXplorer;
+using Nethereum.BlockchainProcessing.BlockStorage.Entities.Mapping;
 using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
@@ -68,6 +69,7 @@ public class EthErc20Listener(
 
     private async Task LoopIndex(EthErc20LikeConfigurationItem configurationItem, CancellationToken stoppingToken)
     {
+        var rateLimitBackoffMs = 5_000;
         while (stoppingToken.IsCancellationRequested == false)
             try
             {
@@ -119,7 +121,7 @@ public class EthErc20Listener(
 
                         if (block != null)
                         {
-                            await OnNewBlockToIndex(pmi, block);
+                            await OnNewBlockToIndex(pmi, block, stoppingToken);
                             logger.LogInformation("New block indexed {BlockNumber}", block.Number);
 
                             listenerState.LastBlockHeight = (long)block.Number.Value;
@@ -133,6 +135,7 @@ public class EthErc20Listener(
 
 
                     await SetTrackingState(configurationItem, listenerState);
+                    rateLimitBackoffMs = 5_000; // reset after successful iteration
                 }
             }
             catch(RpcClientTimeoutException)
@@ -142,8 +145,9 @@ public class EthErc20Listener(
             }
             catch(RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") == true)
             {
-                logger.LogWarning("Rate limit exceeded while indexing, use an Ethereum node with higher limits if possible. Retrying in 10 seconds");
-                await Task.Delay(10_000, stoppingToken);
+                logger.LogWarning("Rate limit exceeded while indexing, use an Ethereum node with higher limits if possible. Retrying in {DelayMs} ms", rateLimitBackoffMs);
+                await Task.Delay(rateLimitBackoffMs, stoppingToken);
+                rateLimitBackoffMs = Math.Min(rateLimitBackoffMs * 2, 60_000);
             }
             catch (Exception e)
             {
@@ -177,7 +181,7 @@ public class EthErc20Listener(
         return usdtPluginConfiguration.EthereumErc20LikeConfigurationItems[pmi];
     }
 
-    private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block)
+    private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block, CancellationToken stoppingToken)
     {
         if (invoices.Length == 0) return;
 
@@ -196,21 +200,33 @@ public class EthErc20Listener(
             .ToDictionary(i => i.Prompt!.Destination!.ToLowerInvariant(), i => i);
 
         var web3Client = rpcProvider.GetWeb3Client(pmi);
-        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(GetConfig(pmi).SmartContractAddress);
+        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(GetConfig(pmi).SmartContractAddress.ToLowerInvariant());
 
-        // This is a workaround for the fact that sometimes the event is not indexed yet
-        List<EventLog<TransferEventDTO>>? changes;
+        // Build batched topic filter on destination addresses to keep logs light
+        var toAddresses = invoicesPerAddress.Keys.ToArray();
+        var changes = new List<EventLog<TransferEventDTO>>();
         int tries = 0;
         do
         {
-               changes = await transferEvent.GetAllChangesAsync(
-                    transferEvent.CreateFilterInput(new BlockParameter(block.Number),
-                        new BlockParameter(block.Number)));
-               
-               if (changes != null && changes.Count != 0)
-                   break;
-               
-               await Task.Delay(250);
+            changes.Clear();
+            const int batchSize = 128;
+            for (var i = 0; i < toAddresses.Length; i += batchSize)
+            {
+                var batch = toAddresses.Skip(i).Take(batchSize).Select(a => (object)a).ToArray();
+                var topics = new object[] { null!, null!, batch };
+                var filter = transferEvent.CreateFilterInput(
+                    new BlockParameter(block.Number),
+                    new BlockParameter(block.Number),
+                    topics);
+                var part = await transferEvent.GetAllChangesAsync(filter);
+                if (part != null && part.Count != 0)
+                    changes.AddRange(part);
+            }
+
+            if (changes.Count != 0)
+                break;
+
+            await Task.Delay(250, stoppingToken);
         } while (tries++ < 3);
         
         if(changes == null)
@@ -254,9 +270,9 @@ public class EthErc20Listener(
                 eventAggregator.Publish(new InvoiceNeedUpdateEvent(valueTuples.Key.Id));
     }
 
-    private async Task OnNewBlockToIndex(PaymentMethodId pmi, BlockWithTransactions block)
+    private async Task OnNewBlockToIndex(PaymentMethodId pmi, BlockWithTransactions block, CancellationToken stoppingToken)
     {
-        await UpdateAnyPendingErc20Payment(pmi, block);
+        await UpdateAnyPendingErc20Payment(pmi, block, stoppingToken);
     }
 
     private async Task HandlePaymentData(
@@ -296,7 +312,7 @@ public class EthErc20Listener(
     }
 
 
-    private async Task UpdateAnyPendingErc20Payment(PaymentMethodId pmi, BlockWithTransactions block)
+    private async Task UpdateAnyPendingErc20Payment(PaymentMethodId pmi, BlockWithTransactions block, CancellationToken stoppingToken)
     {
         var invoices = (await invoiceRepository.GetMonitoredInvoices(pmi, true))
             .Where(i => StatusToTrack.Contains(i.Status))
@@ -306,7 +322,7 @@ public class EthErc20Listener(
         if (invoices.Length == 0)
             return;
 
-        await UpdatePaymentStates(pmi, invoices, block);
+        await UpdatePaymentStates(pmi, invoices, block, stoppingToken);
     }
 
     private static IEnumerable<PaymentEntity> GetPendingErc20Payments(InvoiceEntity invoice, PaymentMethodId pmi)

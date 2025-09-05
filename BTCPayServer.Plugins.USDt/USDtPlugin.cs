@@ -205,7 +205,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         return config with
         {
             JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
-            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress
+            SmartContractAddress = (serverSettings.SmartContractAddress ?? config.SmartContractAddress).ToLowerInvariant()
         };
     }
 
@@ -222,7 +222,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         return config with
         {
             JsonRpcUri = configuration.GetOrDefault($"{config.GetSettingPrefix()}_JSONRPC_URI", config.JsonRpcUri),
-            SmartContractAddress = configuration.GetOrDefault($"{config.GetSettingPrefix()}_SMARTCONTRACT_ADDRESS", config.SmartContractAddress)
+            SmartContractAddress = configuration.GetOrDefault($"{config.GetSettingPrefix()}_SMARTCONTRACT_ADDRESS", config.SmartContractAddress).ToLowerInvariant()
         };
     }
 
@@ -259,7 +259,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 ],
 
                 Divisibility = 6,
-                SmartContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                SmartContractAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
                 JsonRpcUri = new Uri("https://ethereum.publicnode.com"),
                 BlockExplorerLink = "https://etherscan.io/tx/{0}"
             },
