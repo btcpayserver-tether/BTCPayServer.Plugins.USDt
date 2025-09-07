@@ -121,6 +121,10 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
 
             services.AddSingleton<ISyncSummaryProvider, EthErc20SyncSummaryProvider>();
+
+            // Store UI extensions for ETH ERC20 (addresses management & checkout)
+            services.AddUIExtension("store-wallets-nav", "EthErc20/StoreWalletsNavEthErc20Extension");
+            services.AddUIExtension("checkout-payment-method", "EthErc20/EmptyCheckoutPaymentMethodExtension");
         }
         
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
@@ -236,7 +240,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         return config with
         {
             JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
-            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress
+            SmartContractAddress = (serverSettings.SmartContractAddress ?? config.SmartContractAddress).ToLowerInvariant()
         };
     }
 
