@@ -209,15 +209,17 @@ public class EthErc20Listener(
         do
         {
             changes.Clear();
-            const int batchSize = 128;
+            const int batchSize = 1;
             for (var i = 0; i < toAddresses.Length; i += batchSize)
             {
-                var batch = toAddresses.Skip(i).Take(batchSize).Select(a => (object)a).ToArray();
-                var topics = new object[] { null!, null!, batch };
+                var toAddress = toAddresses[i];
+                // Use overload: CreateFilterInput(firstIndexed, secondIndexed, fromBlock, toBlock)
+                // ERC20 Transfer has two indexed params: from (topic1), to (topic2). We wildcard 'from' and filter on single 'to'.
                 var filter = transferEvent.CreateFilterInput(
+                    (object?)null,
+                    (object)toAddress,
                     new BlockParameter(block.Number),
-                    new BlockParameter(block.Number),
-                    topics);
+                    new BlockParameter(block.Number));
                 var part = await transferEvent.GetAllChangesAsync(filter);
                 if (part != null && part.Count != 0)
                     changes.AddRange(part);
