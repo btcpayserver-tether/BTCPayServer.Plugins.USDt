@@ -247,6 +247,24 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
     private static EthErc20LikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
     {
+        const string ethLogo =
+            "data:image/svg+xml,%3Csvg width='165' height='165' viewBox='0 0 165 165' fill='none' xmlns='http://www.w3.org/2000/svg'%3E" +
+            "%3Ccircle cx='82.5' cy='82.5' r='82.5' fill='%23019493'/%3E" +
+            // Main Tether coin (same as TRON variant)
+            "%3Cpath d='M128.225 75.7991L112.84 49.382C112.209 48.3018 111.049 47.6387 109.787 47.6387H56.9688C55.7442 47.6387 54.6051 48.2697 53.9634 49.2964L37.5196 75.7724C36.664 77.152 36.8832 78.9274 38.0436 80.0665L80.3431 121.355C81.7121 122.697 83.9206 122.697 85.295 121.355L127.648 80.013C128.787 78.9007 129.022 77.1734 128.225 75.8044V75.7991ZM106.477 83.1306C106.418 85.8365 98.4875 88.0879 87.9206 88.6387V101.254H77.9313V88.6387C67.3645 88.0879 59.4394 85.8365 59.3805 83.1306V77.4943C59.4394 74.7884 67.3645 72.5317 77.9313 71.9809V66.8419H62.8886V59.4301H102.969V66.8419H87.926V71.9809C98.4928 72.5317 106.423 74.7884 106.482 77.4943V83.1306H106.477Z' fill='white'/%3E" +
+            "%3Cpath d='M87.9206 81.3659C86.311 81.4515 84.6372 81.4889 82.926 81.4889C81.2148 81.4889 79.541 81.4462 77.9313 81.3659V75.9809C68.9527 76.4462 61.8725 78.1467 59.9206 80.3071C62.2255 82.8526 71.6533 84.7617 82.9313 84.7617C94.2094 84.7617 103.632 82.8526 105.937 80.3071C103.979 78.1467 96.91 76.4462 87.926 75.9809V81.3659H87.9206Z' fill='white'/%3E" +
+            // Small badge circle bottom-right
+            "%3Ccircle cx='113' cy='108.5' r='19' fill='%23019493'/%3E" +
+            "%3Ccircle cx='113' cy='108.5' r='17' fill='white'/%3E" +
+            // Ethereum diamond inside the small circle (centered and scaled to fit)
+            "%3Cg transform='translate(103,92) scale(0.5)'%3E" +
+            "%3Cpolygon fill='%23343434' points='20,0 0,34 20,26 40,34'/%3E" +
+            "%3Cpolygon fill='%238C8C8C' points='20,26 0,34 20,44 40,34'/%3E" +
+            "%3Cpolygon fill='%233C3C3D' points='20,54 0,40 20,66 40,40'/%3E" +
+            "%3Cpolygon fill='%23141414' points='20,44 0,40 20,54 40,40'/%3E" +
+            "%3C/g%3E" +
+            "%3C/svg%3E%0A";
+
         return chainName switch
         {
             _ when chainName == ChainName.Mainnet => new EthErc20LikeConfigurationItem
@@ -254,7 +272,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
                 DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName}",
-                CryptoImagePath = string.Empty,
+                CryptoImagePath = ethLogo,
                 
                 DefaultRateRules =
                 [
@@ -273,7 +291,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
                 DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName} Testnet",
-                CryptoImagePath = string.Empty,
+                CryptoImagePath = ethLogo,
 
                 DefaultRateRules =
                 [
