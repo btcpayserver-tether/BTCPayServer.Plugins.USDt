@@ -125,6 +125,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             // Store UI extensions for ETH ERC20 (addresses management & checkout)
             services.AddUIExtension("store-wallets-nav", "EthErc20/StoreWalletsNavEthErc20Extension");
             services.AddUIExtension("checkout-payment-method", "EthErc20/EmptyCheckoutPaymentMethodExtension");
+
+            // Server settings navigation
+            services.AddUIExtension("server-nav","EthErc20/ServerNavEthErc20Extension");
         }
         
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
