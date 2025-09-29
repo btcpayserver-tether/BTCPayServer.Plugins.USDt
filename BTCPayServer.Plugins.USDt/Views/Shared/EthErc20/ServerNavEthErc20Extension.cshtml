@@ -3,6 +3,7 @@
 @using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Client
 @using BTCPayServer.Data
+@using BTCPayServer.Plugins.USDt
 @using BTCPayServer.Plugins.USDt.Configuration
 @using BTCPayServer.Plugins.USDt.Controllers
 @using BTCPayServer.Views.Server
@@ -11,16 +12,11 @@
 @inject SignInManager<ApplicationUser> SignInManager;
 @inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
-@{
-    var storeId = ScopeProvider.GetCurrentStoreId();
-    var isSettingsActive = ViewData.IsCategoryActive(typeof(ServerNavPages)) && !ViewData.IsPageActive([ServerNavPages.Plugins]);
-    var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
-                   nameof(UIEthErc20LikeServerController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
-}
 
-@if ((isSettingsActive && SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EthereumErc20LikeConfigurationItems.Any()) || isActive)
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EthereumErc20LikeConfigurationItems.Any())
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
-        <a asp-controller="UIEthErc20LikeServer" class="nav-link @(isActive ? "active" : string.Empty)" asp-action="GetServerConfig">USD₮ on ETHEREUM</a>
+        <a asp-controller="UIEthErc20LikeServer" asp-action="GetServerConfig" 
+           class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(BTCPayServer.Views.Server.ServerNavPages).ToString(), "EthServer")">USD₮ on ETHEREUM</a>
     </li>
 }
