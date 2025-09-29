@@ -23,6 +23,7 @@ namespace BTCPayServer.Plugins.USDt;
 
 public class USDtPlugin : BaseBTCPayServerPlugin
 {
+    public const string PluginNavKey = "USDtPlugin";
     public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
     [
         new IBTCPayServerPlugin.PluginDependency { Identifier = nameof(BTCPayServer), Condition = ">=2.0.0" }

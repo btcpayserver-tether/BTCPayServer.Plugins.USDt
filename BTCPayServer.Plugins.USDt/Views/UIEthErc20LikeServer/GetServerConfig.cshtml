@@ -1,9 +1,11 @@
 @using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Views.Server
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EthErc20LikeServerConfigViewModel;
 @{
-    ViewData.SetActivePage("USD\u20ae on ETHEREUM server settings", "USD\u20ae on ETHEREUM server settings", "USD\u20ae on ETHEREUM server settings");
-    ViewData["NavPartialName"] = "../UIStores/_Nav";
+    // Use ServerNavPages category so the Server Settings sub-nav renders
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "USD\u20ae on ETHEREUM", "EthServer");
 }
 
 <form method="post" enctype="multipart/form-data">

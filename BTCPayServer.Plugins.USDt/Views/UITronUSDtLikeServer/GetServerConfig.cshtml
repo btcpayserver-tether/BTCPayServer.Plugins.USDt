@@ -1,9 +1,10 @@
 @using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Views.Server
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.TronUSDtLikeServerConfigViewModel;
 @{
-    ViewData.SetActivePage("USD\u20ae on TRON server settings", "USD\u20ae on TRON server settings", "USD\u20ae on TRON server settings");
-    ViewData["NavPartialName"] = "../UIStores/_Nav";
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "USD\u20ae on TRON", "TronServer");
 }
 
 <form method="post" enctype="multipart/form-data">

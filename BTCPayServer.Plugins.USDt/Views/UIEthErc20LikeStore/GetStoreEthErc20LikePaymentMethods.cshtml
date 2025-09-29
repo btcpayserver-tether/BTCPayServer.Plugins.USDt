@@ -1,11 +1,12 @@
 @using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.ViewEthErc20StoreOptionsViewModel;
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage("USD\u20ae on ETHEREUM payment settings", "USD\u20ae on ETHEREUM payment settings", "USD\u20ae on ETHEREUM payment settings");
-    ViewData["NavPartialName"] = "../UIStores/_Nav";
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on ETHEREUM payment settings", "EthStore");
 }
 
 <h3 class="mb-3">USD₮ on ETHEREUM payment settings</h3>
