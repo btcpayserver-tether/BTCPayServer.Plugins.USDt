@@ -6,4 +6,5 @@ public static class Constants
     public const string EthereumChainName = "ETHEREUM";
     public const string USDtCurrency = "USDt";
     public const string USDtCurrencyDisplayName = "USD\u20ae";
+    public static string SepoliaChainName = "SEPOLIA";
 }

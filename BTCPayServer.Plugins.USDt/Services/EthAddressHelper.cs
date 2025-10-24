@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Nethereum.Util;
 
 namespace BTCPayServer.Plugins.USDt.Services;

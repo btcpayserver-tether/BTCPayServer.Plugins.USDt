@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
-using BTCPayServer.Plugins.USDt.Configuration.Tron;
+using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtCheckoutModelExtension(
-    TronUSDtLikeConfigurationItem configurationItem,
+public class EthUSDtCheckoutModelExtension(
+    EthUSDtLikeConfigurationItem configurationItem,
     IEnumerable<IPaymentLinkExtension> paymentLinkExtensions) : ICheckoutModelExtension
 {
     private readonly IPaymentLinkExtension _paymentLinkExtension =
@@ -19,7 +19,7 @@ public class TronUSDtCheckoutModelExtension(
 
     public void ModifyCheckoutModel(CheckoutModelContext context)
     {
-        if (context is not { Handler: TronUSDtLikePaymentMethodHandler handler })
+        if (context is not { Handler: EthUSDtPaymentMethodHandler handler })
             return;
 
         context.Model.CheckoutBodyComponentName = BitcoinCheckoutModelExtension.CheckoutBodyComponentName;

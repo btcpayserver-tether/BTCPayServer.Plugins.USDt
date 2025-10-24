@@ -1,13 +1,15 @@
 @using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.ViewUSDtStoreOptionsViewModel;
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage("USD\u20ae on TRON payment settings", "USD\u20ae on TRON payment settings", "USD\u20ae on TRON payment settings");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on ETHEREUM payment settings", "EthStore");
 }
 
-<h3 class="mb-3">USD₮ on TRON payment settings</h3>
+<h3 class="mb-3">USD₮ on ETHEREUM payment settings</h3>
 <div class="row">
     <div class="col-md-6">
         <div asp-validation-summary="All"></div>
@@ -50,7 +52,7 @@
                             }
                         </td>
                         <td class="text-right">
-                            <a id="Modify@(item.DisplayName)" asp-action="GetStoreTronUSDtLikePaymentMethod"
+                            <a id="Modify@(item.DisplayName)" asp-action="GetStoreEthUSDtLikePaymentMethod"
                                asp-route-storeId="@Context.GetRouteValue("storeId")"
                                asp-route-paymentMethodId="@item.PaymentMethodId">
                                 Modify

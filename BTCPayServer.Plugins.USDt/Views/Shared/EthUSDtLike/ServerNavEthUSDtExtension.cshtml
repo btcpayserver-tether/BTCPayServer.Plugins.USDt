@@ -1,0 +1,22 @@
+@using BTCPayServer
+@using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Client
+@using BTCPayServer.Data
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Plugins.USDt.Configuration
+@using BTCPayServer.Plugins.USDt.Controllers
+@using BTCPayServer.Views.Server
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject USDtPluginConfiguration USDtPluginConfiguration;
+@inject IScopeProvider ScopeProvider
+
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.Any())
+{
+    <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+        <a asp-controller="UIEthUSDtLikeServer" asp-action="GetServerConfig" 
+           class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(BTCPayServer.Views.Server.ServerNavPages).ToString(), "EthServer")">USD₮ on @(USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.First().Value.Chain)</a>
+    </li>
+}

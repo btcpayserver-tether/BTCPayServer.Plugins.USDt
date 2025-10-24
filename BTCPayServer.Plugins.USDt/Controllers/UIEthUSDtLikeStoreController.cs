@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -21,12 +20,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
-[Route("stores/{storeId}/tronUSDtlike")]
+[Route("stores/{storeId}/EthUSDtlike")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-public class UITronUSDtLikeStoreController(
+public class UIEthUSDtLikeStoreController(
     StoreRepository storeRepository,
-    TronUSDtRPCProvider tronUSDtRpcProvider,
+    EthUSDtRPCProvider EthUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
@@ -35,10 +34,9 @@ public class UITronUSDtLikeStoreController(
     private StoreData StoreData => HttpContext.GetStoreData();
 
     [HttpGet]
-    public IActionResult GetStoreTronUSDtLikePaymentMethods()
+    public IActionResult GetStoreEthUSDtLikePaymentMethods()
     {
         var vm = GetVM(StoreData);
-
         return View(vm);
     }
 
@@ -48,10 +46,10 @@ public class UITronUSDtLikeStoreController(
         var excludeFilters = storeData.GetStoreBlob().GetExcludedPaymentMethods();
 
         var vm = new ViewUSDtStoreOptionsViewModel();
-        foreach (var item in pluginConfiguration.TronUSDtLikeConfigurationItems.Values)
+        foreach (var item in pluginConfiguration.EthereumUSDtLikeConfigurationItems.Values)
         {
             var pmi = item.GetPaymentMethodId();
-            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(pmi, handlers);
+            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(pmi, handlers);
             vm.Items.Add(new ViewUSDtStoreOptionItemViewModel
             {
                 PaymentMethodId = pmi,
@@ -64,34 +62,32 @@ public class UITronUSDtLikeStoreController(
         return vm;
     }
 
-
     [HttpGet("{paymentMethodId}")]
-    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
             return NotFound();
-        
+
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
-        var matchedPaymentMethodConfig =  StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var matchedPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
-            return View(new EditTronUSDtPaymentMethodViewModel
+            return View(new EditEthUSDtPaymentMethodViewModel
             {
                 Enabled = false
             });
 
         var balances =
-            await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+            await EthUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
-            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        return View(new EditTronUSDtPaymentMethodViewModel
+        return View(new EditEthUSDtPaymentMethodViewModel
         {
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
-            ExcludeAmountFromPaymentLink = matchedPaymentMethodConfig.ExcludeAmountFromPaymentLink,
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
-                new EditTronUSDtPaymentMethodViewModel.EditTronUSDtPaymentMethodAddressViewModel
+                new EditEthUSDtPaymentMethodViewModel.EditEthUSDtPaymentMethodAddressViewModel
                 {
                     Available = reservedAddresses.Contains(s) == false,
                     Balance = balances.Single(x => x.Item1 == s).Item2 == null
@@ -106,13 +102,13 @@ public class UITronUSDtLikeStoreController(
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
             return NotFound();
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
         var currentPaymentMethodConfig =
-            StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+            StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         if (currentPaymentMethodConfig is null) return NotFound();
 
         currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
@@ -126,29 +122,29 @@ public class UITronUSDtLikeStoreController(
             Severity = StatusMessageModel.StatusSeverity.Success
         });
 
-        return RedirectToAction(nameof(GetStoreTronUSDtLikePaymentMethod), new { storeId, paymentMethodId });
+        return RedirectToAction(nameof(GetStoreEthUSDtLikePaymentMethod), new { storeId, paymentMethodId });
     }
 
     [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(EditTronUSDtPaymentMethodViewModel viewModel,
+    public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(EditEthUSDtPaymentMethodViewModel viewModel,
         PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
             return NotFound();
-
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
-        currentPaymentMethodConfig ??= new TronUSDtPaymentMethodConfig();
+        var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        currentPaymentMethodConfig ??= new EthUSDtPaymentMethodConfig();
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
             var addresses = viewModel.Address.Split([',', ';', ' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                .Where(TronUSDtAddressHelper.IsValid)
+                .Where(EthAddressHelper.IsValid)
+                .Select(a => a.ToLowerInvariant())
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
-            
+
             if(addresses.Any() == false)
             {
                 TempData.SetStatusMessageModel(new StatusMessageModel
@@ -157,15 +153,14 @@ public class UITronUSDtLikeStoreController(
                     Severity = StatusMessageModel.StatusSeverity.Error
                 });
 
-                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId = paymentMethodId });
+                return RedirectToAction("GetStoreEthUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId = paymentMethodId });
             }
-            
+
             currentPaymentMethodConfig.Addresses =
             [
                 .. currentPaymentMethodConfig.Addresses,
                 .. addresses
             ];
-
 
             if (addresses.Length == 1)
             {
@@ -184,41 +179,21 @@ public class UITronUSDtLikeStoreController(
                 });
             }
         }
-        else
+        else if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
         {
-            // This is the "Save" form submission (not the "Add address" form)
-            var messages = new List<string>();
+            blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
 
-            if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
+            TempData.SetStatusMessageModel(new StatusMessageModel
             {
-                blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
-                messages.Add($"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}");
-            }
-
-            // Update the ExcludeAmountFromPaymentLink setting
-            if (currentPaymentMethodConfig.ExcludeAmountFromPaymentLink != viewModel.ExcludeAmountFromPaymentLink)
-            {
-                currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = viewModel.ExcludeAmountFromPaymentLink;
-                messages.Add(viewModel.ExcludeAmountFromPaymentLink 
-                    ? "QR code will now exclude the amount parameter" 
-                    : "QR code will now include the amount parameter");
-            }
-
-            if (messages.Count > 0)
-            {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = string.Join(". ", messages),
-                    Severity = StatusMessageModel.StatusSeverity.Success
-                });
-            }
+                Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
+                Severity = StatusMessageModel.StatusSeverity.Success
+            });
         }
 
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
 
-
-        return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
+        return RedirectToAction("GetStoreEthUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
     }
 }

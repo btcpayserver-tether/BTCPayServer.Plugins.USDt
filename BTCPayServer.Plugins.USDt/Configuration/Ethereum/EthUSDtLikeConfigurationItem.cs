@@ -2,12 +2,11 @@ using System;
 
 namespace BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 
-public record EthUSDtLikeConfigurationItem : USDtPluginConfigurationItem
+public record EthUSDtLikeConfigurationItem(string Chain) : USDtPluginConfigurationItem
 {
-    public override string Chain => Constants.EthereumChainName;
-
     public required Uri JsonRpcUri { get; init; }
     public required string SmartContractAddress { get; init; }
+    public override string Chain { get; } = Chain;
     public override required string Currency { get; init; }
     public required string DisplayName { get; init; }
     public required int Divisibility { get; init; }

@@ -63,11 +63,6 @@
 
 
     <ItemGroup>
-        <Folder Include="Views\Shared\"/>
-    </ItemGroup>
-
-
-    <ItemGroup>
         <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreNavTronUSDtExtension.cshtml" />
         <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreWalletsNavTronUSDtExtension.cshtml" />
         <AdditionalFiles Include="Views\Shared\TronUSDtLike\TronUSDtSyncSummary.cshtml" />
