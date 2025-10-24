@@ -1,9 +1,9 @@
-﻿using System.Globalization;
+using System.Globalization;
 using BTCPayServer.Services;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-internal class TronUSDtTransactionLinkProvider(string blockExplorerLink)
+internal class EthUSDtTransactionLinkProvider(string blockExplorerLink)
     : DefaultTransactionLinkProvider(blockExplorerLink)
 {
     public override string? GetTransactionLink(string paymentId)

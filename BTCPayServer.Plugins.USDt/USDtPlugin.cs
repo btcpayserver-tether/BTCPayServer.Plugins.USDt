@@ -45,13 +45,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         var tronUSDtConfiguration = GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
         tronUSDtConfiguration = OverrideWithServerSettings(tronUSDtConfiguration, settingsRepository);
 
-        // Prepare Ethereum ERC20 (USDT) configuration only on Mainnet for initial scope
-        EthErc20LikeConfigurationItem? ethUsdtConfiguration = null;
-        if (networkProvider.NetworkType == ChainName.Mainnet)
-        {
-            ethUsdtConfiguration = GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
-            ethUsdtConfiguration = OverrideWithServerSettings(ethUsdtConfiguration, settingsRepository);
-        }
+        // Prepare Ethereum USDt configuration only on Mainnet for initial scope
+        var ethUsdtConfiguration = GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
+        ethUsdtConfiguration = OverrideWithServerSettings(ethUsdtConfiguration, settingsRepository);
 
         var pluginConfiguration = new USDtPluginConfiguration
         {
@@ -59,12 +55,12 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             {
                 { tronUSDtConfiguration.GetPaymentMethodId(), tronUSDtConfiguration }
             },
-            EthereumErc20LikeConfigurationItems = new Dictionary<PaymentMethodId, EthErc20LikeConfigurationItem>()
+            EthereumUSDtLikeConfigurationItems = new Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem>()
+            {
+                { ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration}
+            }
         };
-        if (ethUsdtConfiguration is not null)
-        {
-            pluginConfiguration.EthereumErc20LikeConfigurationItems.Add(ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration);
-        }
+
         services.AddSingleton(pluginConfiguration);
 
         services.AddCurrencyData(new CurrencyData
@@ -99,38 +95,35 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("server-nav","TronUSDtLike/ServerNavTronUSDtExtension");
         services.AddUIExtension("store-wallets-nav", "TronUSDtLike/StoreWalletsNavTronUSDtExtension");
         services.AddUIExtension("store-invoices-payments", "TronUSDtLike/ViewTronUSDtLikePaymentData");
-        services.AddUIExtension("checkout-payment-method", "TronUSDtLike/EmptyCheckoutPaymentMethodExtension");
+        services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
         
-        // Ethereum ERC20 (USDT) wiring
-        if (ethUsdtConfiguration is not null)
-        {
-            var ethPaymentMethodId = ethUsdtConfiguration.GetPaymentMethodId();
-            services.AddTransactionLinkProvider(ethPaymentMethodId, new EthErc20TransactionLinkProvider(ethUsdtConfiguration.BlockExplorerLink));
-            services.AddSingleton<EthErc20RPCProvider>();
-            services.AddHostedService<EthErc20LikeSummaryUpdaterHostedService>();
-            services.AddHostedService<EthErc20Listener>();
+        // Ethereum USDt wiring
+        var ethPaymentMethodId = ethUsdtConfiguration.GetPaymentMethodId();
+        services.AddTransactionLinkProvider(ethPaymentMethodId, new EthUSDtTransactionLinkProvider(ethUsdtConfiguration.BlockExplorerLink));
+        services.AddSingleton<EthUSDtRPCProvider>();
+        services.AddHostedService<EthUSDtLikeSummaryUpdaterHostedService>();
+        services.AddHostedService<EthUSDtListener>();
 
-            services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentMethodHandler),
+        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentMethodHandler),
+            ethUsdtConfiguration));
+        services.AddSingleton<IPaymentLinkExtension>(provider =>
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility));
+        services.AddSingleton(provider =>
+            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtCheckoutModelExtension),
                 ethUsdtConfiguration));
-            services.AddSingleton<IPaymentLinkExtension>(provider =>
-                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20PaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility));
-            services.AddSingleton(provider =>
-                (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthErc20CheckoutModelExtension),
-                    ethUsdtConfiguration));
 
-            services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
+        services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
 
-            services.AddSingleton<ISyncSummaryProvider, EthErc20SyncSummaryProvider>();
+        services.AddSingleton<ISyncSummaryProvider, EthUSDtSyncSummaryProvider>();
 
-            // Store UI extensions for ETH ERC20 (addresses management & checkout)
-            services.AddUIExtension("store-wallets-nav", "EthErc20/StoreWalletsNavEthErc20Extension");
-            services.AddUIExtension("checkout-payment-method", "EthErc20/EmptyCheckoutPaymentMethodExtension");
+        // Store UI extensions for ETH (addresses management & checkout)
+        services.AddUIExtension("store-wallets-nav", "EthUSDtLike/StoreWalletsNavEthUSDtExtension");
+        services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
 
-            // Server settings navigation
-            services.AddUIExtension("server-nav","EthErc20/ServerNavEthErc20Extension");
-        }
-        
+        // Server settings navigation
+        services.AddUIExtension("server-nav","EthUSDtLike/ServerNavEthUSDtExtension");
+
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
 
@@ -217,15 +210,15 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    // Ethereum ERC20 (USDT) configuration helpers
-    public static EthErc20LikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
+    // Ethereum USDT like configuration helpers
+    public static EthUSDtLikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
     {
         var ethConfig = GetEthUSDtHardcodedConfig(networkProvider.NetworkType);
         ethConfig = OverrideWithAppConfig(ethConfig, configuration);
         return ethConfig;
     }
 
-    private static EthErc20LikeConfigurationItem OverrideWithAppConfig(EthErc20LikeConfigurationItem config, IConfiguration configuration)
+    private static EthUSDtLikeConfigurationItem OverrideWithAppConfig(EthUSDtLikeConfigurationItem config, IConfiguration configuration)
     {
         return config with
         {
@@ -234,7 +227,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    public static EthErc20LikeConfigurationItem OverrideWithServerSettings(EthErc20LikeConfigurationItem config, ISettingsRepository settingsRepository)
+    public static EthUSDtLikeConfigurationItem OverrideWithServerSettings(EthUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
     {
         var serverSettings = settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
 
@@ -248,7 +241,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    private static EthErc20LikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
+    private static EthUSDtLikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
     {
         const string ethLogo =
             "data:image/svg+xml,%3Csvg width='165' height='165' viewBox='0 0 165 165' fill='none' xmlns='http://www.w3.org/2000/svg'%3E" +
@@ -270,7 +263,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         return chainName switch
         {
-            _ when chainName == ChainName.Mainnet => new EthErc20LikeConfigurationItem
+            _ when chainName == ChainName.Mainnet => new EthUSDtLikeConfigurationItem(Constants.EthereumChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
@@ -289,11 +282,11 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 JsonRpcUri = new Uri("https://ethereum.publicnode.com"),
                 BlockExplorerLink = "https://etherscan.io/tx/{0}"
             },
-            _ when chainName == ChainName.Testnet => new EthErc20LikeConfigurationItem
+            _ when chainName == ChainName.Testnet => new EthUSDtLikeConfigurationItem(Constants.SepoliaChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName} Testnet",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.SepoliaChainName}",
                 CryptoImagePath = ethLogo,
 
                 DefaultRateRules =
@@ -304,7 +297,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
                 Divisibility = 6,
                 // Token contract should be overridden in server settings for sepolia.
-                SmartContractAddress = "0x0000000000000000000000000000000000000000",
+                // This is one is for development only.
+                // You can use mint() function on this contract to mint yourself some USDT test tokens.
+                SmartContractAddress = "0xf02d1AF3c9Ec13f4E9E986f2de75dA96D75a57B0",
                 // Provide a sensible default public RPC; can be overridden in settings
                 JsonRpcUri = new Uri("https://sepolia.publicnode.com"),
                 BlockExplorerLink = "https://sepolia.etherscan.io/tx/{0}"

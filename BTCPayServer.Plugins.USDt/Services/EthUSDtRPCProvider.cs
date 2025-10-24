@@ -2,13 +2,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Net.Http;
 using System.Numerics;
 using System.Threading.Tasks;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
-using BTCPayServer.Plugins.USDt.Configuration.Tron;
+using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 using BTCPayServer.Plugins.USDt.Services.Events;
 using BTCPayServer.Services;
 using NBitcoin;
@@ -18,7 +17,7 @@ using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class TronUSDtRPCProvider
+public class EthUSDtRPCProvider
 {
     private readonly EventAggregator _eventAggregator;
     private readonly IEventAggregatorSubscription _eventAggregatorSubscription;
@@ -28,7 +27,7 @@ public class TronUSDtRPCProvider
     private readonly USDtPluginConfiguration _usdtPluginConfiguration;
     private ImmutableDictionary<PaymentMethodId, RpcClient>? _walletRpcClients;
 
-    public TronUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
+    public EthUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
         EventAggregator eventAggregator,
         SettingsRepository settingsRepository,
         IHttpClientFactory httpClientFactory)
@@ -39,21 +38,21 @@ public class TronUSDtRPCProvider
         _httpClientFactory = httpClientFactory;
 
         _eventAggregatorSubscription =
-            _eventAggregator.Subscribe<TronUSDtSettingsChanged>(_ => LoadClientsFromConfiguration());
+            _eventAggregator.Subscribe<EthUSDtSettingsChanged>(_ => LoadClientsFromConfiguration());
         LoadClientsFromConfiguration();
     }
 
-    public ConcurrentDictionary<PaymentMethodId, TronUSDtLikeSummary> Summaries { get; } = new();
+    public ConcurrentDictionary<PaymentMethodId, EthUSDtLikeSummary> Summaries { get; } = new();
 
     private void LoadClientsFromConfiguration()
     {
         lock (this)
         {
-            _walletRpcClients = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems.ToImmutableDictionary(
+            _walletRpcClients = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems.ToImmutableDictionary(
                 pair => pair.Key,
                 pair =>
                 {
-                    var httpClient = _httpClientFactory.CreateClient($"{pair.Key}client");
+                    var httpClient = _httpClientFactory.CreateClient();
                     var rpcClient = new RpcClient(pair.Value.JsonRpcUri, httpClient);
                     return rpcClient;
                 });
@@ -73,20 +72,18 @@ public class TronUSDtRPCProvider
         return Summaries.ContainsKey(pmi) && IsAvailable(Summaries[pmi]);
     }
 
-    private static bool IsAvailable(TronUSDtLikeSummary summary)
+    private static bool IsAvailable(EthUSDtLikeSummary summary)
     {
         return summary is { Synced: true, RpcAvailable: true };
     }
 
     public async Task<(string, decimal?)[]> GetBalances(PaymentMethodId pmi, IEnumerable<string> addresses)
     {
-        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
-        var tokenService = new StandardTokenService(GetWeb3Client(pmi),
-            TronUSDtAddressHelper.Base58ToHex(configuration.SmartContractAddress));
-        var hexAddresses = addresses.Select(b => (b, TronUSDtAddressHelper.Base58ToHex(b)));
+        var configuration = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[pmi];
+        var tokenService = new StandardTokenService(GetWeb3Client(pmi), configuration.SmartContractAddress);
 
-        List<(string, decimal?)> results = [];
-        foreach (var (base58Address, address) in hexAddresses)
+        List<(string, decimal?)> results = new();
+        foreach (var address in addresses)
             try
             {
                 var balanceResult = await tokenService.BalanceOfQueryAsync(address);
@@ -94,11 +91,11 @@ public class TronUSDtRPCProvider
                 var quotient = balanceResult / divisor;
                 var remainder = balanceResult % divisor;
                 var fractionalPart = (decimal)remainder / (decimal)divisor;
-                results.Add((base58Address, (decimal)quotient + fractionalPart));
+                results.Add((address, (decimal)quotient + fractionalPart));
             }
             catch (Exception)
             {
-                results.Add((base58Address, null));
+                results.Add((address, null));
             }
 
         return results.ToArray();
@@ -108,12 +105,12 @@ public class TronUSDtRPCProvider
     {
         if (!_walletRpcClients!.TryGetValue(pmi, out _)) return;
 
-        var configuration = _usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
+        var configuration = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[pmi];
         var listenerState =
             await _settingsRepository.GetSettingAsync<EVMBasedListenerState>(ListenerStateSettingKey(configuration));
         if (listenerState == null) return;
 
-        var summary = new TronUSDtLikeSummary();
+        var summary = new EthUSDtLikeSummary();
         try
         {
             summary.LatestBlockScanned = listenerState.LastBlockHeight;
@@ -135,7 +132,7 @@ public class TronUSDtRPCProvider
             }
 
             summary.Synced = summary.HighestBlockOnChain - listenerState.LastBlockHeight <
-                             (int)(TimeSpan.FromMinutes(10).TotalSeconds / 3.0);
+                             (int)(TimeSpan.FromMinutes(10).TotalSeconds / 12.0);
 
             summary.UpdatedAt = DateTime.UtcNow;
             summary.RpcAvailable = true;
@@ -149,15 +146,15 @@ public class TronUSDtRPCProvider
 
         Summaries.AddOrReplace(pmi, summary);
         if (changed)
-            _eventAggregator.Publish(new TronUSDtDaemonStateChanged { Summary = summary, PaymentMethodId = pmi });
+            _eventAggregator.Publish(new EthUSDtDaemonStateChanged { Summary = summary, PaymentMethodId = pmi });
     }
 
-    public static string ListenerStateSettingKey(TronUSDtLikeConfigurationItem config)
+    public static string ListenerStateSettingKey(EthUSDtLikeConfigurationItem config)
     {
         return $"{config.GetSettingPrefix()}_LISTENER_STATE";
     }
 
-    public class TronUSDtLikeSummary
+    public class EthUSDtLikeSummary
     {
         public bool Synced { get; set; }
         public BigInteger LatestBlockOnNode { get; set; }
