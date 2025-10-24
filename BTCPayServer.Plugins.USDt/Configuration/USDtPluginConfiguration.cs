@@ -8,5 +8,5 @@ namespace BTCPayServer.Plugins.USDt.Configuration;
 public class USDtPluginConfiguration
 {
     public Dictionary<PaymentMethodId, TronUSDtLikeConfigurationItem> TronUSDtLikeConfigurationItems { get; init; } = new();
-    public Dictionary<PaymentMethodId, EthErc20LikeConfigurationItem> EthereumErc20LikeConfigurationItems { get; init; } = new();
+    public Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem> EthereumUSDtLikeConfigurationItems { get; init; } = new();
 }

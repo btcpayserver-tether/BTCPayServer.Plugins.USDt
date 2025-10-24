@@ -3,13 +3,13 @@ using BTCPayServer.Client.Models;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtLikePaymentData
+public class EthUSDtPaymentData
 {
     public int ConfirmationCount { get; set; }
     public required string TransactionId { get; init; }
     public BigInteger BlockHeight { get; init; }
-    public required string To { get; init; } // For future usages
-    public required string From { get; init; } // For future usages
+    public required string To { get; init; }
+    public required string From { get; init; }
 
     public bool PaymentConfirmed(SpeedPolicy speedPolicy)
     {
