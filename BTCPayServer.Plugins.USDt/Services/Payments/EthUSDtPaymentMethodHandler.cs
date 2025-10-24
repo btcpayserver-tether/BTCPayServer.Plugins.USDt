@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
-using BTCPayServer.Plugins.USDt.Configuration.Tron;
+using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using Newtonsoft.Json;
@@ -10,9 +10,9 @@ using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtLikePaymentMethodHandler(
-    TronUSDtLikeConfigurationItem configurationItem,
-    TronUSDtRPCProvider tronUSDtRpcProvider,
+public class EthUSDtPaymentMethodHandler(
+    EthUSDtLikeConfigurationItem configurationItem,
+    EthUSDtRPCProvider rpcProvider,
     CurrencyNameTable currencyNameTable,
     InvoiceRepository invoiceRepository) : IPaymentMethodHandler
 {
@@ -30,14 +30,14 @@ public class TronUSDtLikePaymentMethodHandler(
 
     public async Task ConfigurePrompt(PaymentMethodContext context)
     {
-        if (!tronUSDtRpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
+        if (!rpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
-        var details = new TronUSDtLikeOnChainPaymentMethodDetails();
+        var details = new EthUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
                                throw new PaymentMethodUnavailableException(
-                                   "All your TRON addresses are currently waiting payment");
+                                   "All your Ethereum addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0;
         context.Prompt.Details = JObject.FromObject(details, Serializer);
@@ -58,20 +58,20 @@ public class TronUSDtLikePaymentMethodHandler(
         return ParsePaymentDetails(details);
     }
 
-    private TronUSDtPaymentMethodConfig ParsePaymentMethodConfig(JToken config)
+    private EthUSDtPaymentMethodConfig ParsePaymentMethodConfig(JToken config)
     {
-        return config.ToObject<TronUSDtPaymentMethodConfig>(Serializer) ??
-               throw new FormatException($"Invalid {nameof(TronUSDtLikePaymentMethodHandler)}");
+        return config.ToObject<EthUSDtPaymentMethodConfig>(Serializer) ??
+               throw new FormatException($"Invalid {nameof(EthUSDtPaymentMethodHandler)}");
     }
 
-    public TronUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
+    public EthUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
     {
-        return details.ToObject<TronUSDtLikeOnChainPaymentMethodDetails>(Serializer);
+        return details.ToObject<EthUSDtLikeOnChainPaymentMethodDetails>(Serializer);
     }
 
-    public TronUSDtLikePaymentData ParsePaymentDetails(JToken details)
+    public EthUSDtPaymentData ParsePaymentDetails(JToken details)
     {
-        return details.ToObject<TronUSDtLikePaymentData>(Serializer) ??
-               throw new FormatException($"Invalid {nameof(TronUSDtLikePaymentMethodHandler)}");
+        return details.ToObject<EthUSDtPaymentData>(Serializer) ??
+               throw new FormatException($"Invalid {nameof(EthUSDtPaymentMethodHandler)}");
     }
 }
