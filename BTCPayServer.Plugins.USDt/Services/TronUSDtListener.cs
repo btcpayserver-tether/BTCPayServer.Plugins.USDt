@@ -102,7 +102,7 @@ public class TronUSDtListener(
                         var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
                         if (lastBlockNumber > listenerState.LastBlockHeight)
                         {
-                            logger.LogInformation("New block avoid from {BlockNumber} to {NewBlockNumber}",
+                            logger.LogDebug("New block avoid from {BlockNumber} to {NewBlockNumber}",
                                 listenerState.LastBlockHeight, lastBlockNumber);
                             listenerState.LastBlockHeight = lastBlockNumber;
                         }
