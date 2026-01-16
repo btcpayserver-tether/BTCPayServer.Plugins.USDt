@@ -21,10 +21,12 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 8.0.404
     - name: Restore dependencies
       run: dotnet restore
+    - name: Build BTCPayServer
+      run: dotnet build submodules/btcpayserver/BTCPayServer/BTCPayServer.csproj -maxcpucount:1
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build
     - name: Test
       run: dotnet test --no-build --verbosity normal BTCPayServer.Plugins.USDt.Tests/BTCPayServer.Plugins.USDt.Tests.csproj
