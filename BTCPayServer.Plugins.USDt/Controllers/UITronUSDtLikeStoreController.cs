@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -88,6 +89,7 @@ public class UITronUSDtLikeStoreController(
         {
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
+            ExcludeAmountFromPaymentLink = matchedPaymentMethodConfig.ExcludeAmountFromPaymentLink,
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
                 new EditTronUSDtPaymentMethodViewModel.EditTronUSDtPaymentMethodAddressViewModel
                 {
@@ -182,15 +184,34 @@ public class UITronUSDtLikeStoreController(
                 });
             }
         }
-        else if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
+        else
         {
-            blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
+            // This is the "Save" form submission (not the "Add address" form)
+            var messages = new List<string>();
 
-            TempData.SetStatusMessageModel(new StatusMessageModel
+            if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
             {
-                Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
-                Severity = StatusMessageModel.StatusSeverity.Success
-            });
+                blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
+                messages.Add($"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}");
+            }
+
+            // Update the ExcludeAmountFromPaymentLink setting
+            if (currentPaymentMethodConfig.ExcludeAmountFromPaymentLink != viewModel.ExcludeAmountFromPaymentLink)
+            {
+                currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = viewModel.ExcludeAmountFromPaymentLink;
+                messages.Add(viewModel.ExcludeAmountFromPaymentLink 
+                    ? "QR code will now exclude the amount parameter" 
+                    : "QR code will now include the amount parameter");
+            }
+
+            if (messages.Count > 0)
+            {
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = string.Join(". ", messages),
+                    Severity = StatusMessageModel.StatusSeverity.Success
+                });
+            }
         }
 
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
