@@ -24,8 +24,6 @@ jobs:
         dotnet-version: 8.0.404
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build BTCPayServer
-      run: dotnet build submodules/btcpayserver/BTCPayServer/BTCPayServer.csproj -maxcpucount:1
     - name: Build
       run: dotnet build
     - name: Test
