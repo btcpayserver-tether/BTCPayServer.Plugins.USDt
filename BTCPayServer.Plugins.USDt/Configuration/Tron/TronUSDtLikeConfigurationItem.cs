@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BTCPayServer.Plugins.USDt.Configuration.Tron;
 
@@ -15,4 +16,10 @@ public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem
     public required string BlockExplorerLink { get; init; }
     public required string[] DefaultRateRules { get; init; }
     public required string CurrencyDisplayName { get; init; }
+    
+    /// <summary>
+    /// Custom HTTP headers to be sent with every RPC request.
+    /// Useful for API authentication (e.g., TronGrid API key via TRON-PRO-API-KEY header).
+    /// </summary>
+    public Dictionary<string, string>? HttpHeaders { get; init; }
 }

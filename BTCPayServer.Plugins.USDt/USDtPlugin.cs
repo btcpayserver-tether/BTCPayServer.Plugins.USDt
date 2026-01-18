@@ -167,7 +167,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         return config with
         {
             JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
-            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress
+            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress,
+            HttpHeaders = serverSettings.HttpHeaders ?? config.HttpHeaders
         };
     }
 
