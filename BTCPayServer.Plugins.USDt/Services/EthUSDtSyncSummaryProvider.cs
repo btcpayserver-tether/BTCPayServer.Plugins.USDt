@@ -15,7 +15,7 @@ public class EthUSDtSyncSummaryProvider(EthUSDtRPCProvider rpcProvider) : ISyncS
 
     public IEnumerable<ISyncStatus> GetStatuses()
     {
-        return rpcProvider.Summaries.Select(pair => new EthUSDtSyncStatus
+        return rpcProvider.Summaries.Select(pair => new EVMSyncStatus
         {
             Summary = pair.Value,
             PaymentMethodId = pair.Key.ToString()

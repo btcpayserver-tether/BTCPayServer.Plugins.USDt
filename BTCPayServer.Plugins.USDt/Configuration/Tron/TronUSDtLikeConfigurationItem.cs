@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace BTCPayServer.Plugins.USDt.Configuration.Tron;
 
-public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem
+public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem, IEVMConfigurationItem
 {
     public override string Chain => Constants.TronChainName;
 

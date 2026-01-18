@@ -15,7 +15,7 @@ public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider
 
     public IEnumerable<ISyncStatus> GetStatuses()
     {
-        return tronUSDtRpcProvider.Summaries.Select(pair => new TronUSDtSyncStatus
+        return tronUSDtRpcProvider.Summaries.Select(pair => new EVMSyncStatus
         {
             Summary = pair.Value,
             PaymentMethodId = pair.Key.ToString()

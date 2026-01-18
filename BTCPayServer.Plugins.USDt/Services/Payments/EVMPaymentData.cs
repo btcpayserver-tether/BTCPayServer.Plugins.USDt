@@ -3,13 +3,17 @@ using BTCPayServer.Client.Models;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtLikePaymentData
+/// <summary>
+/// Base class for EVM-based payment data (Tron, Ethereum, etc.)
+/// Contains common fields and confirmation logic for EVM chains.
+/// </summary>
+public abstract class EVMPaymentData
 {
     public int ConfirmationCount { get; set; }
     public required string TransactionId { get; init; }
     public BigInteger BlockHeight { get; init; }
-    public required string To { get; init; } // For future usages
-    public required string From { get; init; } // For future usages
+    public required string To { get; init; }
+    public required string From { get; init; }
 
     public bool PaymentConfirmed(SpeedPolicy speedPolicy)
     {
@@ -22,4 +26,18 @@ public class TronUSDtLikePaymentData
             _ => false
         };
     }
+}
+
+/// <summary>
+/// Tron-specific payment data (inherits common EVM behavior)
+/// </summary>
+public class TronUSDtLikePaymentData : EVMPaymentData
+{
+}
+
+/// <summary>
+/// Ethereum-specific payment data (inherits common EVM behavior)
+/// </summary>
+public class EthUSDtPaymentData : EVMPaymentData
+{
 }

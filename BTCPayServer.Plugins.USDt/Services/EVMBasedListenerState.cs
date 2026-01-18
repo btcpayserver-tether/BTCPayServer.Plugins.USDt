@@ -1,8 +1,10 @@
-﻿using System.Numerics;
+﻿namespace BTCPayServer.Plugins.USDt.Services;
 
-namespace BTCPayServer.Plugins.USDt.Services;
-
+/// <summary>
+/// Tracking state for EVM-based blockchain listeners.
+/// Stores the last indexed block height for resuming after restarts.
+/// </summary>
 public class EVMBasedListenerState
 {
-    public BigInteger LastBlockHeight { get; set; }
+    public long LastBlockHeight { get; set; }
 }

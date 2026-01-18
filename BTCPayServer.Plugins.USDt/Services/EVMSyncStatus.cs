@@ -3,9 +3,12 @@ using BTCPayServer.Client.Models;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class EthUSDtSyncStatus : SyncStatus, ISyncStatus
+/// <summary>
+/// Base sync status for EVM-based blockchains
+/// </summary>
+public class EVMSyncStatus : SyncStatus, ISyncStatus
 {
-    public required EthUSDtRPCProvider.EthUSDtLikeSummary Summary { get; init; }
+    public required EVMSummary Summary { get; init; }
 
     public override bool Available => Summary?.RpcAvailable ?? false;
 }
