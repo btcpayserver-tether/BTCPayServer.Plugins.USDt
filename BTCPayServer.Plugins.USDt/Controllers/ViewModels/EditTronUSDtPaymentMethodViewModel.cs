@@ -8,6 +8,7 @@ public class EditTronUSDtPaymentMethodViewModel
     [TronBase58]
     public string? Address { get; init; }
     public bool Enabled { get; init; }
+    public bool ExcludeAmountFromPaymentLink { get; init; }
 
     public EditTronUSDtPaymentMethodAddressViewModel[] Addresses { get; init; } =
         [];

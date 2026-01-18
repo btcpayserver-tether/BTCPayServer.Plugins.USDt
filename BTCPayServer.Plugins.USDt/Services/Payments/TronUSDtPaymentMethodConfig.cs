@@ -8,6 +8,7 @@ namespace BTCPayServer.Plugins.USDt.Services.Payments;
 public class TronUSDtPaymentMethodConfig
 {
     public string[] Addresses { get; set; } = [];
+    public bool ExcludeAmountFromPaymentLink { get; set; }
 
     public async Task<string?> GetOneNotReservedAddress(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)

@@ -127,6 +127,14 @@
                 <label asp-for="Enabled" class="form-check-label"></label>
                 <span asp-validation-for="Enabled" class="text-danger"></span>
             </div>
+            <div class="d-flex mb-3">
+                <input asp-for="ExcludeAmountFromPaymentLink" type="checkbox" class="btcpay-toggle me-3"/>
+                <label asp-for="ExcludeAmountFromPaymentLink" class="form-check-label">Exclude amount from QR code</label>
+                <span asp-validation-for="ExcludeAmountFromPaymentLink" class="text-danger"></span>
+            </div>
+            <div class="form-text mb-3">
+                Enable this option if your customers use wallets that don't support the amount parameter in the payment link. The QR code will only contain the destination address, and the customer will need to enter the amount manually.
+            </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary" id="SaveButton">Save</button>
             </div>

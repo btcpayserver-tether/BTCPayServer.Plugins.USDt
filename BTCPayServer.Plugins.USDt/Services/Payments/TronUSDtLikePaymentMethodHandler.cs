@@ -34,8 +34,12 @@ public class TronUSDtLikePaymentMethodHandler(
         if (!tronUSDtRpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
-        var details = new TronUSDtLikeOnChainPaymentMethodDetails();
-        var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
+        var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
+        var details = new TronUSDtLikeOnChainPaymentMethodDetails
+        {
+            ExcludeAmountFromPaymentLink = config.ExcludeAmountFromPaymentLink
+        };
+        var availableAddress = await config
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
                                throw new PaymentMethodUnavailableException("All your TRON addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
