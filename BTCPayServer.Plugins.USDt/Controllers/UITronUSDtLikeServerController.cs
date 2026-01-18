@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -45,6 +46,7 @@ public class UITronUSDtLikeServerController(
 
             SmartContractAddress = serverSettings?.SmartContractAddress,
             JsonRpcUri = serverSettings?.JsonRpcUri?.AbsoluteUri,
+            HttpHeaders = HttpHeadersDictionaryToString(serverSettings?.HttpHeaders),
         };
         return View(viewModel);
     }
@@ -69,7 +71,8 @@ public class UITronUSDtLikeServerController(
         var serverSettings = new TronUSDtLikeServerSettings()
         {
             SmartContractAddress = viewModel.SmartContractAddress is null or "" ? null : viewModel.SmartContractAddress,
-            JsonRpcUri = viewModel.JsonRpcUri is null or "" ? null : new Uri(viewModel.JsonRpcUri)
+            JsonRpcUri = viewModel.JsonRpcUri is null or "" ? null : new Uri(viewModel.JsonRpcUri),
+            HttpHeaders = ParseHttpHeadersString(viewModel.HttpHeaders)
         };
 
         await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
@@ -80,5 +83,44 @@ public class UITronUSDtLikeServerController(
         eventAggregator.Publish(new TronUSDtSettingsChanged());
 
         return RedirectToAction("GetServerConfig");
+    }
+    
+    /// <summary>
+    /// Parses a newline-separated string of "Header-Name: Value" pairs into a dictionary.
+    /// </summary>
+    private static Dictionary<string, string>? ParseHttpHeadersString(string? headersString)
+    {
+        if (string.IsNullOrWhiteSpace(headersString))
+            return null;
+
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var lines = headersString.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines)
+        {
+            var colonIndex = line.IndexOf(':');
+            if (colonIndex <= 0) continue;
+            
+            var headerName = line[..colonIndex].Trim();
+            var headerValue = line[(colonIndex + 1)..].Trim();
+            
+            if (!string.IsNullOrEmpty(headerName) && !string.IsNullOrEmpty(headerValue))
+            {
+                headers[headerName] = headerValue;
+            }
+        }
+
+        return headers.Count > 0 ? headers : null;
+    }
+    
+    /// <summary>
+    /// Converts a dictionary of headers to a newline-separated string of "Header-Name: Value" pairs.
+    /// </summary>
+    private static string? HttpHeadersDictionaryToString(Dictionary<string, string>? headers)
+    {
+        if (headers == null || headers.Count == 0)
+            return null;
+
+        return string.Join(Environment.NewLine, headers.Select(h => $"{h.Key}: {h.Value}"));
     }
 }

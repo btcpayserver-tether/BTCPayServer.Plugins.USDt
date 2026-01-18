@@ -53,6 +53,16 @@ public class TronUSDtRPCProvider
                 pair =>
                 {
                     var httpClient = _httpClientFactory.CreateClient($"{pair.Key}client");
+                    
+                    // Add custom HTTP headers if configured (e.g., for TronGrid API key)
+                    if (pair.Value.HttpHeaders != null)
+                    {
+                        foreach (var header in pair.Value.HttpHeaders)
+                        {
+                            httpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+                        }
+                    }
+                    
                     var rpcClient = new RpcClient(pair.Value.JsonRpcUri, httpClient);
                     return rpcClient;
                 });
