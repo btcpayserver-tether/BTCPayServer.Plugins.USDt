@@ -2,7 +2,7 @@
 
 namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
-public class ViewTronUSDtStoreOptionItemViewModel
+public class ViewUSDtStoreOptionItemViewModel
 {
     public required string DisplayName { get; init; }
     public bool Enabled { get; init; }

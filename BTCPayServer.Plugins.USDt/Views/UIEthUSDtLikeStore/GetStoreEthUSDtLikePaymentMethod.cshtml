@@ -5,13 +5,13 @@
 @using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
-@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditTronUSDtPaymentMethodViewModel;
+@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditEthUSDtPaymentMethodViewModel;
 
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on TRON payment settings", "TronStore");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on ETHEREUM payment settings", "EthStore");
 }
-<h3 class="mb-3">USD₮ on TRON payment settings</h3>
+<h3 class="mb-3">USD₮ on ETHEREUM payment settings</h3>
 <div class="row">
     <div class="col-md-6">
         <div asp-validation-summary="All"></div>
@@ -39,7 +39,7 @@
               asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")"
               class="mt-4" enctype="multipart/form-data">
             <div class="d-flex flex-wrap align-items-center gap-3">
-                <input asp-for="Address" type="text" class="form-control" placeholder="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL" style="flex: 1 1 14rem">
+                <input asp-for="Address" type="text" class="form-control" placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e" style="flex: 1 1 14rem">
                 <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address(es)</button>
             </div>
             <div class="form-text">
@@ -127,14 +127,6 @@
                 <input asp-for="Enabled" type="checkbox" class="btcpay-toggle me-3"/>
                 <label asp-for="Enabled" class="form-check-label"></label>
                 <span asp-validation-for="Enabled" class="text-danger"></span>
-            </div>
-            <div class="d-flex mb-3">
-                <input asp-for="ExcludeAmountFromPaymentLink" type="checkbox" class="btcpay-toggle me-3"/>
-                <label asp-for="ExcludeAmountFromPaymentLink" class="form-check-label">Exclude amount from QR code</label>
-                <span asp-validation-for="ExcludeAmountFromPaymentLink" class="text-danger"></span>
-            </div>
-            <div class="form-text mb-3">
-                Enable this option if your customers use wallets that don't support the amount parameter in the payment link. The QR code will only contain the destination address, and the customer will need to enter the amount manually.
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary" id="SaveButton">Save</button>

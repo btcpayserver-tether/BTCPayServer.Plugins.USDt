@@ -13,9 +13,10 @@
 @inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
 
-@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any())
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.Any())
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
-        <a asp-controller="UITronUSDtLikeServer" asp-action="GetServerConfig" class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(BTCPayServer.Views.Server.ServerNavPages).ToString(), "TronServer")">USD₮ on TRON</a>
+        <a asp-controller="UIEthUSDtLikeServer" asp-action="GetServerConfig" 
+           class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(BTCPayServer.Views.Server.ServerNavPages).ToString(), "EthServer")">USD₮ on @(USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.First().Value.Chain)</a>
     </li>
 }

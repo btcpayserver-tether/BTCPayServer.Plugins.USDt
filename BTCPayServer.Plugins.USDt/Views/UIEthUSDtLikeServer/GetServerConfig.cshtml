@@ -2,14 +2,15 @@
 @using BTCPayServer.Plugins.USDt
 @using BTCPayServer.Views.Server
 @using Microsoft.AspNetCore.Mvc.TagHelpers
-@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.TronUSDtLikeServerConfigViewModel;
+@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EthUSDtLikeServerConfigViewModel;
 @{
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "USD\u20ae on TRON", "TronServer");
+    // Use ServerNavPages category so the Server Settings sub-nav renders
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "USD\u20ae on ETHEREUM", "EthServer");
 }
 
 <form method="post" enctype="multipart/form-data">
     <div class="sticky-header">
-        <h2>USD₮ on TRON server settings</h2>
+        <h2>@ViewData.Model.DisplayName server settings</h2>
         <button id="SaveButton" type="submit" class="btn btn-primary" name="command" value="Save">Save</button>
     </div>
     <div class="row">
@@ -41,28 +42,10 @@
                 <div class="form-text">
                     Please provide the URL of the JSON-RPC API
                     <small>
-                        <a href="https://developers.tron.network/reference/json-rpc-api-overview" target="_blank" rel="noreferrer noopener">
+                        <a href="https://ethereum.org/en/developers/docs/apis/json-rpc/" target="_blank" rel="noreferrer noopener">
                             <vc:icon symbol="info"/>
                         </a>
-                    </small> of the node you wish to use for the connection with the TRON chain. By default, it uses the public node.
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <label asp-for="HttpHeaders" class="form-label">HTTP Headers</label>
-                </div>
-                <textarea asp-for="HttpHeaders" class="form-control" rows="3" placeholder="TRON-PRO-API-KEY: your-api-key-here"></textarea>
-                <span asp-validation-for="HttpHeaders" class="text-danger"></span>
-                <div class="form-text">
-                    Optional custom HTTP headers to send with every RPC request (one per line, format: <code>Header-Name: value</code>).
-                    <br/>
-                    For TronGrid API access, add your API key:
-                    <small>
-                        <a href="https://developers.tron.network/reference/select-network" target="_blank" rel="noreferrer noopener">
-                            <vc:icon symbol="info"/>
-                        </a>
-                    </small>
-                    <code>TRON-PRO-API-KEY: your-api-key-here</code>
+                    </small> of the node you wish to use for the connection with the Ethereum chain. By default, it uses a public node.
                 </div>
             </div>
             <h4>Advanced</h4>
@@ -72,28 +55,23 @@
                 </svg>
                 <div>
                     Only change this parameter if YOU KNOW WHAT YOU ARE DOING. It can cause <b>security</b> and reliability issues.
-
-
                 </div>
             </div>
             <div class="form-group">
-
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <label asp-for="SmartContractAddress" class="form-label">Smart contract address</label>
                 </div>
-
                 <input asp-for="SmartContractAddress" type="text" class="form-control" placeholder="@ViewData.Model.DefaultSmartContractAddress" style="flex: 1 1 14rem">
                 <span asp-validation-for="SmartContractAddress" class="text-danger"></span>
                 <div class="form-text">
-                    Please provide the address of the smart contract
+                    Please provide the address of the USDT smart contract on Ethereum
                     <small>
                         <a href="https://tether.to/en/supported-protocols" target="_blank" rel="noreferrer noopener">
                             <vc:icon symbol="info"/>
                         </a>
-                    </small> you wish to use for the connection with the TRON chain. By default, it uses the public contract.
+                    </small>. By default, it uses the official mainnet contract.
                 </div>
             </div>
-
         </div>
     </div>
 </form>
