@@ -9,6 +9,7 @@ using BTCPayServer.Plugins.USDt.Controllers.Models;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Invoices;
+using BTCPayServer.Services.Stores;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,7 @@ public class GreenfieldEthUSDtLikeStoreController(
     EthUSDtRPCProvider ethUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
+    StoreRepository storeRepository,
     USDtPluginConfiguration pluginConfiguration) : ControllerBase
 {
     private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
@@ -62,7 +64,7 @@ public class GreenfieldEthUSDtLikeStoreController(
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
     [HttpPost("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses")]
-    public IActionResult AddAddress(PaymentMethodId paymentMethodId, [FromBody] EthUSDtAddAddressRequest request)
+    public async Task<IActionResult> AddAddress(PaymentMethodId paymentMethodId, [FromBody] EthUSDtAddAddressRequest request)
     {
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
@@ -82,12 +84,13 @@ public class GreenfieldEthUSDtLikeStoreController(
 
         currentConfig.Addresses = [.. currentConfig.Addresses, .. normalized];
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
         return Ok();
     }
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
     [HttpDelete("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses/{address}")]
-    public IActionResult DeleteAddress(PaymentMethodId paymentMethodId, string address)
+    public async Task<IActionResult> DeleteAddress(PaymentMethodId paymentMethodId, string address)
     {
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
@@ -101,6 +104,7 @@ public class GreenfieldEthUSDtLikeStoreController(
 
         currentConfig.Addresses = currentConfig.Addresses.Where(a => a != normalized).ToArray();
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
         return Ok();
     }
 }
