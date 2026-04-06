@@ -166,17 +166,21 @@ public class SwaggerProvider : ISwaggerProvider
                     ""application/json"": {
                       ""schema"": {
                         ""type"": ""object"",
-                        ""required"": [""address""],
+                        ""required"": [""addresses""],
                         ""properties"": {
-                          ""address"": {""type"": ""string"", ""description"": ""Tron address (T...)""}
+                          ""addresses"": {
+                            ""type"": ""array"",
+                            ""items"": {""type"": ""string""},
+                            ""description"": ""List of Tron addresses (T...)""
+                          }
                         }
                       }
                     }
                   }
                 },
                 ""responses"": {
-                  ""200"": {""description"": ""Address added""},
-                  ""400"": {""description"": ""Invalid address or already exists""},
+                  ""200"": {""description"": ""Addresses added""},
+                  ""400"": {""description"": ""Invalid address(es) or already exist""},
                   ""404"": {""description"": ""Payment method not found""}
                 }
               }
