@@ -21,7 +21,7 @@ public class EthUSDtLikeSummaryUpdaterHostedService(
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        foreach (var configurationItem in usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems)
+        foreach (var configurationItem in usdtPluginConfiguration.EVMUSDtLikeConfigurationItems)
             _ = StartLoop(_cts.Token, configurationItem.Key);
 
         return Task.CompletedTask;

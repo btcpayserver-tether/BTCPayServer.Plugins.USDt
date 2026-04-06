@@ -5,10 +5,12 @@
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EthUSDtLikeServerConfigViewModel;
 @{
     // Use ServerNavPages category so the Server Settings sub-nav renders
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "USD\u20ae on ETHEREUM", "EthServer");
+    var paymentMethodId = ViewContext.RouteData.Values["paymentMethodId"]?.ToString() ?? "";
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), Model.DisplayName, $"EVM-{paymentMethodId}");
 }
 
 <form method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="DisplayName" />
     <div class="sticky-header">
         <h2>@ViewData.Model.DisplayName server settings</h2>
         <button id="SaveButton" type="submit" class="btn btn-primary" name="command" value="Save">Save</button>
