@@ -48,10 +48,10 @@ public class EthUSDtListener(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
+        if (usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        foreach (var kv in usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems)
+        foreach (var kv in usdtPluginConfiguration.EVMUSDtLikeConfigurationItems)
             _ = LoopIndex(kv.Value, _cts.Token);
         return Task.CompletedTask;
     }
@@ -182,7 +182,7 @@ public class EthUSDtListener(
 
     private EthUSDtLikeConfigurationItem GetConfig(PaymentMethodId pmi)
     {
-        return usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[pmi];
+        return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[pmi];
     }
 
     private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block,

@@ -15,7 +15,7 @@
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
 }
-@if (SignInManager.IsSignedIn(User) && USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.Any())
+@if (SignInManager.IsSignedIn(User) && USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.Any())
 {
     var store = Context.GetStoreData();
     var result = UIEthUSDtLikeStore.GetVM(store);

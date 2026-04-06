@@ -45,9 +45,11 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         var tronUSDtConfiguration = GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
         tronUSDtConfiguration = OverrideWithServerSettings(tronUSDtConfiguration, settingsRepository);
 
-        // Prepare Ethereum USDt configuration only on Mainnet for initial scope
         var ethUsdtConfiguration = GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
         ethUsdtConfiguration = OverrideWithServerSettings(ethUsdtConfiguration, settingsRepository);
+
+        var polygonUsdtConfiguration = GetPolygonUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
+        polygonUsdtConfiguration = OverrideWithServerSettings(polygonUsdtConfiguration, settingsRepository);
 
         var pluginConfiguration = new USDtPluginConfiguration
         {
@@ -55,9 +57,10 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             {
                 { tronUSDtConfiguration.GetPaymentMethodId(), tronUSDtConfiguration }
             },
-            EthereumUSDtLikeConfigurationItems = new Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem>()
+            EVMUSDtLikeConfigurationItems = new Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem>
             {
-                { ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration}
+                { ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration },
+                { polygonUsdtConfiguration.GetPaymentMethodId(), polygonUsdtConfiguration }
             }
         };
 
@@ -108,21 +111,34 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentMethodHandler),
             ethUsdtConfiguration));
         services.AddSingleton<IPaymentLinkExtension>(provider =>
-            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility));
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility, ethUsdtConfiguration.ChainId));
         services.AddSingleton(provider =>
             (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtCheckoutModelExtension),
                 ethUsdtConfiguration));
 
         services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
 
+        // Polygon USDt wiring — reuses the EVM-based hosted services (EthUSDtRPCProvider, EthUSDtListener, etc.)
+        // which iterate EVMUSDtLikeConfigurationItems and handle all EVM chains automatically.
+        var polygonPaymentMethodId = polygonUsdtConfiguration.GetPaymentMethodId();
+        services.AddTransactionLinkProvider(polygonPaymentMethodId, new EthUSDtTransactionLinkProvider(polygonUsdtConfiguration.BlockExplorerLink));
+
+        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentMethodHandler),
+            polygonUsdtConfiguration));
+        services.AddSingleton<IPaymentLinkExtension>(provider =>
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), polygonPaymentMethodId, polygonUsdtConfiguration.SmartContractAddress, polygonUsdtConfiguration.Divisibility, polygonUsdtConfiguration.ChainId));
+        services.AddSingleton(provider =>
+            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtCheckoutModelExtension),
+                polygonUsdtConfiguration));
+
+        services.AddDefaultPrettyName(polygonPaymentMethodId, polygonUsdtConfiguration.DisplayName);
+
         services.AddSingleton<ISyncSummaryProvider, EthUSDtSyncSummaryProvider>();
 
-        // Store UI extensions for ETH (addresses management & checkout)
+        // Store UI extensions for all EVM chains (addresses management, checkout, server nav)
         services.AddUIExtension("store-wallets-nav", "EthUSDtLike/StoreWalletsNavEthUSDtExtension");
         services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
-
-        // Server settings navigation
-        services.AddUIExtension("server-nav","EthUSDtLike/ServerNavEthUSDtExtension");
+        services.AddUIExtension("server-nav", "EthUSDtLike/ServerNavEthUSDtExtension");
 
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
@@ -211,12 +227,40 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    // Ethereum USDT like configuration helpers
+    // EVM USDT configuration helpers
+
+    /// <summary>
+    /// Returns the default (app-config-overridden) configuration for any registered EVM chain by its payment method id.
+    /// </summary>
+    public static EthUSDtLikeConfigurationItem GetEVMUSDtDefaultConfigurationItem(
+        PaymentMethodId paymentMethodId,
+        NBXplorerNetworkProvider networkProvider,
+        IConfiguration configuration) =>
+        IsPolygonEvmChain(paymentMethodId)
+            ? GetPolygonUSDtLikeDefaultConfigurationItem(networkProvider, configuration)
+            : GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
+
+    private static bool IsPolygonEvmChain(PaymentMethodId paymentMethodId)
+    {
+        var pmi = paymentMethodId.ToString();
+        var dash = pmi.IndexOf('-');
+        var chain = dash >= 0 ? pmi[(dash + 1)..] : pmi;
+        return string.Equals(chain, Constants.PolygonChainName, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(chain, Constants.AmoyChainName, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static EthUSDtLikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
     {
         var ethConfig = GetEthUSDtHardcodedConfig(networkProvider.NetworkType);
         ethConfig = OverrideWithAppConfig(ethConfig, configuration);
         return ethConfig;
+    }
+
+    public static EthUSDtLikeConfigurationItem GetPolygonUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
+    {
+        var polygonConfig = GetPolygonUSDtHardcodedConfig(networkProvider.NetworkType);
+        polygonConfig = OverrideWithAppConfig(polygonConfig, configuration);
+        return polygonConfig;
     }
 
     private static EthUSDtLikeConfigurationItem OverrideWithAppConfig(EthUSDtLikeConfigurationItem config, IConfiguration configuration)
@@ -270,7 +314,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
                 DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName}",
                 CryptoImagePath = ethLogo,
-                
+
                 DefaultRateRules =
                 [
                     $"{Constants.USDtCurrency}_USD = 1",
@@ -281,7 +325,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 Divisibility = 6,
                 SmartContractAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7",
                 JsonRpcUri = new Uri("https://ethereum.publicnode.com"),
-                BlockExplorerLink = "https://etherscan.io/tx/{0}"
+                BlockExplorerLink = "https://etherscan.io/tx/{0}",
+                ChainId = 1
             },
             _ when chainName == ChainName.Testnet => new EthUSDtLikeConfigurationItem(Constants.SepoliaChainName)
             {
@@ -303,7 +348,70 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 SmartContractAddress = "0xf02d1AF3c9Ec13f4E9E986f2de75dA96D75a57B0",
                 // Provide a sensible default public RPC; can be overridden in settings
                 JsonRpcUri = new Uri("https://sepolia.publicnode.com"),
-                BlockExplorerLink = "https://sepolia.etherscan.io/tx/{0}"
+                BlockExplorerLink = "https://sepolia.etherscan.io/tx/{0}",
+                ChainId = 11155111
+            },
+            _ => throw new NotSupportedException()
+        };
+    }
+
+    private static EthUSDtLikeConfigurationItem GetPolygonUSDtHardcodedConfig(ChainName chainName)
+    {
+        // Polygon purple: #8247E5
+        const string polygonLogo =
+            "data:image/svg+xml,%3Csvg width='165' height='165' viewBox='0 0 165 165' fill='none' xmlns='http://www.w3.org/2000/svg'%3E" +
+            "%3Ccircle cx='82.5' cy='82.5' r='82.5' fill='%238247E5'/%3E" +
+            "%3Cpath d='M128.225 75.7991L112.84 49.382C112.209 48.3018 111.049 47.6387 109.787 47.6387H56.9688C55.7442 47.6387 54.6051 48.2697 53.9634 49.2964L37.5196 75.7724C36.664 77.152 36.8832 78.9274 38.0436 80.0665L80.3431 121.355C81.7121 122.697 83.9206 122.697 85.295 121.355L127.648 80.013C128.787 78.9007 129.022 77.1734 128.225 75.8044V75.7991ZM106.477 83.1306C106.418 85.8365 98.4875 88.0879 87.9206 88.6387V101.254H77.9313V88.6387C67.3645 88.0879 59.4394 85.8365 59.3805 83.1306V77.4943C59.4394 74.7884 67.3645 72.5317 77.9313 71.9809V66.8419H62.8886V59.4301H102.969V66.8419H87.926V71.9809C98.4928 72.5317 106.423 74.7884 106.482 77.4943V83.1306H106.477Z' fill='white'/%3E" +
+            "%3Cpath d='M87.9206 81.3659C86.311 81.4515 84.6372 81.4889 82.926 81.4889C81.2148 81.4889 79.541 81.4462 77.9313 81.3659V75.9809C68.9527 76.4462 61.8725 78.1467 59.9206 80.3071C62.2255 82.8526 71.6533 84.7617 82.9313 84.7617C94.2094 84.7617 103.632 82.8526 105.937 80.3071C103.979 78.1467 96.91 76.4462 87.926 75.9809V81.3659H87.9206Z' fill='white'/%3E" +
+            // Badge: Polygon purple ring with white inner, and simplified Polygon hexagon
+            "%3Ccircle cx='113' cy='108.5' r='19' fill='%238247E5'/%3E" +
+            "%3Ccircle cx='113' cy='108.5' r='17' fill='white'/%3E" +
+            "%3Cpolygon points='113,94 125,101 125,116 113,123 101,116 101,101' fill='%238247E5'/%3E" +
+            "%3C/svg%3E%0A";
+
+        return chainName switch
+        {
+            _ when chainName == ChainName.Mainnet => new EthUSDtLikeConfigurationItem(Constants.PolygonChainName)
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.PolygonChainName}",
+                CryptoImagePath = polygonLogo,
+
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_BTC = USD_BTC",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+
+                Divisibility = 6,
+                SmartContractAddress = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                JsonRpcUri = new Uri("https://polygon-rpc.com"),
+                BlockExplorerLink = "https://polygonscan.com/tx/{0}",
+                BlockTimeSeconds = 2.0,
+                ChainId = 137
+            },
+            _ when chainName == ChainName.Testnet => new EthUSDtLikeConfigurationItem(Constants.AmoyChainName)
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.AmoyChainName}",
+                CryptoImagePath = polygonLogo,
+
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+
+                Divisibility = 6,
+                // Override via server settings with a test USDT deployed on Amoy
+                SmartContractAddress = "0x0000000000000000000000000000000000000000",
+                JsonRpcUri = new Uri("https://rpc-amoy.polygon.technology/"),
+                BlockExplorerLink = "https://amoy.polygonscan.com/tx/{0}",
+                BlockTimeSeconds = 2.0,
+                ChainId = 80002
             },
             _ => throw new NotSupportedException()
         };

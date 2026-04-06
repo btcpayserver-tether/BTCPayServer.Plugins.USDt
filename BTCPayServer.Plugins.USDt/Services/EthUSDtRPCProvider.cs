@@ -48,7 +48,7 @@ public class EthUSDtRPCProvider
     {
         lock (this)
         {
-            _walletRpcClients = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems.ToImmutableDictionary(
+            _walletRpcClients = _usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.ToImmutableDictionary(
                 pair => pair.Key,
                 pair =>
                 {
@@ -79,7 +79,7 @@ public class EthUSDtRPCProvider
 
     public async Task<(string, decimal?)[]> GetBalances(PaymentMethodId pmi, IEnumerable<string> addresses)
     {
-        var configuration = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[pmi];
+        var configuration = _usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[pmi];
         var tokenService = new StandardTokenService(GetWeb3Client(pmi), configuration.SmartContractAddress);
 
         List<(string, decimal?)> results = new();
@@ -105,7 +105,7 @@ public class EthUSDtRPCProvider
     {
         if (!_walletRpcClients!.TryGetValue(pmi, out _)) return;
 
-        var configuration = _usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[pmi];
+        var configuration = _usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[pmi];
         var listenerState =
             await _settingsRepository.GetSettingAsync<EVMBasedListenerState>(ListenerStateSettingKey(configuration));
         if (listenerState == null) return;
@@ -132,7 +132,7 @@ public class EthUSDtRPCProvider
             }
 
             summary.Synced = summary.HighestBlockOnChain - listenerState.LastBlockHeight <
-                             (int)(TimeSpan.FromMinutes(10).TotalSeconds / 12.0);
+                             (int)(TimeSpan.FromMinutes(10).TotalSeconds / configuration.BlockTimeSeconds);
 
             summary.UpdatedAt = DateTime.UtcNow;
             summary.RpcAvailable = true;
