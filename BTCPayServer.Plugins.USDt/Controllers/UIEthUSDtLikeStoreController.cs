@@ -46,7 +46,7 @@ public class UIEthUSDtLikeStoreController(
         var excludeFilters = storeData.GetStoreBlob().GetExcludedPaymentMethods();
 
         var vm = new ViewUSDtStoreOptionsViewModel();
-        foreach (var item in pluginConfiguration.EthereumUSDtLikeConfigurationItems.Values)
+        foreach (var item in pluginConfiguration.EVMUSDtLikeConfigurationItems.Values)
         {
             var pmi = item.GetPaymentMethodId();
             var matchedPaymentMethod = storeData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(pmi, handlers);
@@ -65,24 +65,21 @@ public class UIEthUSDtLikeStoreController(
     [HttpGet("{paymentMethodId}")]
     public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var config))
             return NotFound();
 
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
         var matchedPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
-            return View(new EditEthUSDtPaymentMethodViewModel
-            {
-                Enabled = false
-            });
+            return View(StoreViewName(config.Chain), new EditEthUSDtPaymentMethodViewModel { Enabled = false });
 
         var balances =
             await EthUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
             await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        return View(new EditEthUSDtPaymentMethodViewModel
+        return View(StoreViewName(config.Chain), new EditEthUSDtPaymentMethodViewModel
         {
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
@@ -98,11 +95,18 @@ public class UIEthUSDtLikeStoreController(
         });
     }
 
+    private static string StoreViewName(string chain) => chain switch
+    {
+        Constants.PolygonChainName => "GetStorePolygonUSDtLikePaymentMethod",
+        Constants.AmoyChainName => "GetStorePolygonUSDtLikePaymentMethod",
+        _ => nameof(GetStoreEthUSDtLikePaymentMethod)
+    };
+
     [HttpPost("{paymentMethodId}/addresses/{address}/delete")]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
     {
-        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
             return NotFound();
 
         var store = StoreData;
@@ -130,7 +134,7 @@ public class UIEthUSDtLikeStoreController(
     public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(EditEthUSDtPaymentMethodViewModel viewModel,
         PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.EthereumUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
             return NotFound();
 
         var store = StoreData;
@@ -140,7 +144,7 @@ public class UIEthUSDtLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            var addresses = viewModel.Address.Split([',', ';', ' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(EthAddressHelper.IsValid)
                 .Select(a => a.ToLowerInvariant())
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();

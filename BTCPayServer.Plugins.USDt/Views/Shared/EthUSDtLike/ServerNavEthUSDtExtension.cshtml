@@ -3,6 +3,7 @@
 @using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Client
 @using BTCPayServer.Data
+@using BTCPayServer.Payments
 @using BTCPayServer.Plugins.USDt
 @using BTCPayServer.Plugins.USDt.Configuration
 @using BTCPayServer.Plugins.USDt.Controllers
@@ -13,10 +14,15 @@
 @inject USDtPluginConfiguration USDtPluginConfiguration;
 @inject IScopeProvider ScopeProvider
 
-@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.Any())
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.Any())
 {
-    <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
-        <a asp-controller="UIEthUSDtLikeServer" asp-action="GetServerConfig" 
-           class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(BTCPayServer.Views.Server.ServerNavPages).ToString(), "EthServer")">USD₮ on @(USDtPluginConfiguration.EthereumUSDtLikeConfigurationItems.First().Value.Chain)</a>
-    </li>
+    foreach (var item in USDtPluginConfiguration.EVMUSDtLikeConfigurationItems)
+    {
+        var activeKey = $"EVM-{item.Key}";
+        <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+            <a asp-controller="UIEthUSDtLikeServer" asp-action="GetServerConfig"
+               asp-route-paymentMethodId="@item.Key"
+               class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), activeKey)">USD₮ on @item.Value.Chain</a>
+        </li>
+    }
 }
