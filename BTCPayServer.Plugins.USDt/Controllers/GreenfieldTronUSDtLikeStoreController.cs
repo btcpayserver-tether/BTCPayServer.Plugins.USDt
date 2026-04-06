@@ -9,10 +9,10 @@ using BTCPayServer.Plugins.USDt.Controllers.Models;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Invoices;
+using BTCPayServer.Services.Stores;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
-using StoreData = BTCPayServer.Data.StoreData;
 
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
@@ -23,6 +23,7 @@ public class GreenfieldTronUSDtLikeStoreController(
     TronUSDtRPCProvider tronUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
+    StoreRepository storeRepository,
     USDtPluginConfiguration pluginConfiguration) : ControllerBase
 {
     private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
@@ -31,7 +32,7 @@ public class GreenfieldTronUSDtLikeStoreController(
     [HttpGet("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}")]
     public async Task<IActionResult> GetUSDtLikeStoreInformation(PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
@@ -46,51 +47,49 @@ public class GreenfieldTronUSDtLikeStoreController(
         var reservedAddresses =
             await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        var data = new TronUSDtPaymentMethodInformation
+        return Ok(new TronUSDtPaymentMethodInformation
         {
             StoreId = StoreData.Id,
             PaymentMethodId = paymentMethodId.ToString(),
             Enabled = !excludeFilters.Match(paymentMethodId),
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
-                new TronUSDtPaymentMethodInformation.TronUSDtPaymentMethodAddressInformation()
+                new TronUSDtPaymentMethodInformation.TronUSDtPaymentMethodAddressInformation
                 {
-                    Available = reservedAddresses.Contains(s) == false,
-                    Balance = balances.Single(x => x.Item1 == s).Item2 == null
-                        ? null
-                        : balances.Single(x => x.Item1 == s).Item2!.Value,
+                    Available = !reservedAddresses.Contains(s),
+                    Balance = balances.Single(x => x.Item1 == s).Item2,
                     Value = s
                 }).ToArray()
-        };
-
-        return Ok(data);
+        });
     }
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
     [HttpPost("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses")]
-    public IActionResult AddAddress(PaymentMethodId paymentMethodId, [FromBody] TronUSDtAddAddressRequest request)
+    public async Task<IActionResult> AddAddress(PaymentMethodId paymentMethodId, [FromBody] TronUSDtAddAddressRequest request)
     {
         if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
-        if (!TronUSDtAddressHelper.IsValid(request.Address))
-            return BadRequest(new { message = "Invalid Tron address." });
+        var invalid = request.Addresses.Where(a => !TronUSDtAddressHelper.IsValid(a)).ToArray();
+        if (invalid.Length > 0)
+            return BadRequest(new { message = "Invalid Tron address(es).", addresses = invalid });
 
-        var address = request.Address;
         var store = StoreData;
         var currentConfig = store.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers)
                             ?? new TronUSDtPaymentMethodConfig();
 
-        if (currentConfig.Addresses.Contains(address))
-            return BadRequest(new { message = "Address already exists." });
+        var duplicates = request.Addresses.Where(a => currentConfig.Addresses.Contains(a)).ToArray();
+        if (duplicates.Length > 0)
+            return BadRequest(new { message = "Address(es) already exist.", addresses = duplicates });
 
-        currentConfig.Addresses = [.. currentConfig.Addresses, address];
+        currentConfig.Addresses = [.. currentConfig.Addresses, .. request.Addresses];
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
         return Ok();
     }
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
     [HttpDelete("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses/{address}")]
-    public IActionResult DeleteAddress(PaymentMethodId paymentMethodId, string address)
+    public async Task<IActionResult> DeleteAddress(PaymentMethodId paymentMethodId, string address)
     {
         if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
@@ -103,6 +102,7 @@ public class GreenfieldTronUSDtLikeStoreController(
 
         currentConfig.Addresses = currentConfig.Addresses.Where(a => a != address).ToArray();
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
         return Ok();
     }
 }
