@@ -113,22 +113,11 @@ public class SwaggerProvider : ISwaggerProvider
               ""get"": {
                 ""tags"": [""Store (Payment Methods)""],
                 ""summary"": ""Get Tron USDt configuration"",
-                ""operationId"": ""GetUSDtLikeStoreInformation"",
-                ""security"": [
-                    {
-                        ""API_Key"": [
-                            ""btcpay.store.canviewstoresettings""
-                        ],
-                        ""Basic"": []
-                    }
-                ],
+                ""operationId"": ""GetTronUSDtLikeStoreInformation"",
+                ""security"": [{""API_Key"": [""btcpay.store.canviewstoresettings""], ""Basic"": []}],
                 ""parameters"": [
-                  {
-                      ""$ref"": ""#/components/parameters/StoreId""
-                  },
-                  {
-                      ""$ref"": ""#/components/parameters/PaymentMethodId""
-                  },
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
                 ],
                 ""responses"": {
                   ""200"": {
@@ -148,10 +137,7 @@ public class SwaggerProvider : ISwaggerProvider
                                 ""properties"": {
                                   ""value"": {""type"": ""string""},
                                   ""available"": {""type"": ""boolean""},
-                                  ""balance"": {
-                                    ""type"": ""number"",
-                                    ""nullable"": true
-                                  }
+                                  ""balance"": {""type"": ""number"", ""nullable"": true}
                                 }
                               }
                             }
@@ -160,9 +146,60 @@ public class SwaggerProvider : ISwaggerProvider
                       }
                     }
                   },
-                  ""404"": {
-                    ""description"": ""Not Found""
+                  ""404"": {""description"": ""Not Found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses"": {
+              ""post"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Add a Tron USDt address"",
+                ""operationId"": ""AddTronUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
+                ],
+                ""requestBody"": {
+                  ""required"": true,
+                  ""content"": {
+                    ""application/json"": {
+                      ""schema"": {
+                        ""type"": ""object"",
+                        ""required"": [""address""],
+                        ""properties"": {
+                          ""address"": {""type"": ""string"", ""description"": ""Tron address (T...)""}
+                        }
+                      }
+                    }
                   }
+                },
+                ""responses"": {
+                  ""200"": {""description"": ""Address added""},
+                  ""400"": {""description"": ""Invalid address or already exists""},
+                  ""404"": {""description"": ""Payment method not found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses/{address}"": {
+              ""delete"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Remove a Tron USDt address"",
+                ""operationId"": ""DeleteTronUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""},
+                  {
+                    ""name"": ""address"",
+                    ""in"": ""path"",
+                    ""required"": true,
+                    ""schema"": {""type"": ""string""}
+                  }
+                ],
+                ""responses"": {
+                  ""200"": {""description"": ""Address removed""},
+                  ""404"": {""description"": ""Address or payment method not found""}
                 }
               }
             }

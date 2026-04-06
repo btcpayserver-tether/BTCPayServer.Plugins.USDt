@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Threading.Tasks;
-using AngleSharp.Text;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Client;
 using BTCPayServer.Data;
@@ -26,7 +25,6 @@ public class GreenfieldTronUSDtLikeStoreController(
     InvoiceRepository invoiceRepository,
     USDtPluginConfiguration pluginConfiguration) : ControllerBase
 {
-
     private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
 
     [Authorize(Policy = Policies.CanViewStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
@@ -65,5 +63,46 @@ public class GreenfieldTronUSDtLikeStoreController(
         };
 
         return Ok(data);
+    }
+
+    [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+    [HttpPost("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses")]
+    public IActionResult AddAddress(PaymentMethodId paymentMethodId, [FromBody] TronUSDtAddAddressRequest request)
+    {
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+            return NotFound();
+
+        if (!TronUSDtAddressHelper.IsValid(request.Address))
+            return BadRequest(new { message = "Invalid Tron address." });
+
+        var address = request.Address;
+        var store = StoreData;
+        var currentConfig = store.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers)
+                            ?? new TronUSDtPaymentMethodConfig();
+
+        if (currentConfig.Addresses.Contains(address))
+            return BadRequest(new { message = "Address already exists." });
+
+        currentConfig.Addresses = [.. currentConfig.Addresses, address];
+        store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        return Ok();
+    }
+
+    [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+    [HttpDelete("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses/{address}")]
+    public IActionResult DeleteAddress(PaymentMethodId paymentMethodId, string address)
+    {
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+            return NotFound();
+
+        var store = StoreData;
+        var currentConfig = store.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+
+        if (currentConfig == null || !currentConfig.Addresses.Contains(address))
+            return NotFound();
+
+        currentConfig.Addresses = currentConfig.Addresses.Where(a => a != address).ToArray();
+        store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        return Ok();
     }
 }

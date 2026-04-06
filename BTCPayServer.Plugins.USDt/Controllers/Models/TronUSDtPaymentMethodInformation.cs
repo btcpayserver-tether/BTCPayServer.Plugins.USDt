@@ -17,3 +17,8 @@ public class TronUSDtPaymentMethodInformation
         public required decimal? Balance { get; init; }
     }
 }
+
+public class TronUSDtAddAddressRequest
+{
+    public required string Address { get; init; }
+}
