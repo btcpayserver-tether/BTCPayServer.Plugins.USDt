@@ -18,5 +18,5 @@ public class EthUSDtPaymentMethodInformation
 
 public class EthUSDtAddAddressRequest
 {
-    public required string Address { get; init; }
+    public required string[] Addresses { get; init; }
 }

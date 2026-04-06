@@ -67,18 +67,20 @@ public class GreenfieldEthUSDtLikeStoreController(
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
-        if (!EthAddressHelper.IsValid(request.Address))
-            return BadRequest(new { message = "Invalid EVM address." });
+        var invalid = request.Addresses.Where(a => !EthAddressHelper.IsValid(a)).ToArray();
+        if (invalid.Length > 0)
+            return BadRequest(new { message = "Invalid EVM address(es).", addresses = invalid });
 
-        var address = request.Address.ToLowerInvariant();
         var store = StoreData;
         var currentConfig = store.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers)
                             ?? new EthUSDtPaymentMethodConfig();
 
-        if (currentConfig.Addresses.Contains(address))
-            return BadRequest(new { message = "Address already exists." });
+        var normalized = request.Addresses.Select(a => a.ToLowerInvariant()).ToArray();
+        var duplicates = normalized.Where(a => currentConfig.Addresses.Contains(a)).ToArray();
+        if (duplicates.Length > 0)
+            return BadRequest(new { message = "Address(es) already exist.", addresses = duplicates });
 
-        currentConfig.Addresses = [.. currentConfig.Addresses, address];
+        currentConfig.Addresses = [.. currentConfig.Addresses, .. normalized];
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
         return Ok();
     }
