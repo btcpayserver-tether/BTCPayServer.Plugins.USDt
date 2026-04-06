@@ -27,7 +27,7 @@ public class GreenfieldTronUSDtLikeStoreController(
     USDtPluginConfiguration pluginConfiguration) : ControllerBase
 {
 
-    private StoreData StoreData => HttpContext.GetStoreData();
+    private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
 
     [Authorize(Policy = Policies.CanViewStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
     [HttpGet("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}")]

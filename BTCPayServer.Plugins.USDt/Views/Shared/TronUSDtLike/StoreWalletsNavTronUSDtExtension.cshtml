@@ -17,7 +17,7 @@
 }
 @if (SignInManager.IsSignedIn(User) && USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any())
 {
-    var store = Context.GetStoreData();
+    var store = Context.GetStoreDataOrNull()!;
     var result = UITronUSDtLikeStore.GetVM(store);
 
     foreach (var item in result.Items)

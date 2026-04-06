@@ -31,7 +31,7 @@ public class UIEthUSDtLikeStoreController(
     DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration) : Controller
 {
-    private StoreData StoreData => HttpContext.GetStoreData();
+    private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
 
     [HttpGet]
     public IActionResult GetStoreEthUSDtLikePaymentMethods()
