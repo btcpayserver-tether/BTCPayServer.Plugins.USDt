@@ -42,11 +42,11 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Nethereum.Contracts" Version="4.20.0"/>
-        <PackageReference Include="Nethereum.Hex" Version="4.20.0"/>
-        <PackageReference Include="Nethereum.RPC" Version="4.20.0"/>
-        <PackageReference Include="Nethereum.StandardTokenEIP20" Version="4.20.0"/>
-        <PackageReference Include="Nethereum.Web3" Version="4.20.0"/>
+        <PackageReference Include="Nethereum.Contracts" Version="6.1.0"/>
+        <PackageReference Include="Nethereum.Hex" Version="6.1.0"/>
+        <PackageReference Include="Nethereum.RPC" Version="6.1.0"/>
+        <PackageReference Include="Nethereum.StandardTokenEIP20" Version="6.1.0"/>
+        <PackageReference Include="Nethereum.Web3" Version="6.1.0"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     
     </ItemGroup>
