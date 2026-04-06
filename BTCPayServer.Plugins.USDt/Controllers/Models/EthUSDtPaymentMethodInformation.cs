@@ -1,16 +1,14 @@
-﻿namespace BTCPayServer.Plugins.USDt.Controllers.Models;
+namespace BTCPayServer.Plugins.USDt.Controllers.Models;
 
-public class TronUSDtPaymentMethodInformation
+public class EthUSDtPaymentMethodInformation
 {
     public required string StoreId { get; init; }
-    
     public required string PaymentMethodId { get; init; }
     public required bool Enabled { get; init; }
 
-    public TronUSDtPaymentMethodAddressInformation[] Addresses { get; init; } =
-        [];
+    public EthUSDtPaymentMethodAddressInformation[] Addresses { get; init; } = [];
 
-    public class TronUSDtPaymentMethodAddressInformation
+    public class EthUSDtPaymentMethodAddressInformation
     {
         public required string Value { get; init; }
         public bool Available { get; init; }
@@ -18,7 +16,7 @@ public class TronUSDtPaymentMethodInformation
     }
 }
 
-public class TronUSDtAddAddressRequest
+public class EthUSDtAddAddressRequest
 {
     public required string[] Addresses { get; init; }
 }

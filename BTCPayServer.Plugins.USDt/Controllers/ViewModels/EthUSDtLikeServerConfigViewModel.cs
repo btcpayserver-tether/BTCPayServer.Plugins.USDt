@@ -12,5 +12,5 @@ public class EthUSDtLikeServerConfigViewModel
     [Uri]
     public string? JsonRpcUri { get; init; }
     public Uri? DefaultJsonRpcUri { get; set; }
-    public required string DisplayName { get; init; }
+    public required string DisplayName { get; set; }
 }

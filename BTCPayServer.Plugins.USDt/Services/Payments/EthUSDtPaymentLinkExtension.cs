@@ -6,11 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class EthUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, string tokenContract, int decimals)
+public class EthUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, string tokenContract, int decimals, int chainId)
     : IPaymentLinkExtension
 {
     private readonly string _contract = tokenContract.ToLowerInvariant();
     private readonly int _decimals = decimals;
+    private readonly int _chainId = chainId;
     public PaymentMethodId PaymentMethodId { get; } = paymentMethodId;
 
     public string? GetPaymentLink(PaymentPrompt prompt, IUrlHelper? urlHelper)
@@ -30,7 +31,7 @@ public class EthUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, string
         var unitsDec = decimal.Truncate(scaled);
         var amountUnits = BigInteger.Parse(unitsDec.ToString("0", CultureInfo.InvariantCulture));
 
-        // EIP-681 ERC-20 transfer link: ethereum:{contract}/transfer?address={to}&uint256={amount}
-        return $"ethereum:{_contract}/transfer?address={to}&uint256={amountUnits}";
+        // EIP-681 ERC-20 transfer link: ethereum:{contract}@{chainId}/transfer?address={to}&uint256={amount}
+        return $"ethereum:{_contract}@{_chainId}/transfer?address={to}&uint256={amountUnits}";
     }
 }

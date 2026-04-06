@@ -11,26 +11,15 @@ public class SwaggerProvider : ISwaggerProvider
         var swaggerJson = @"
         {
           ""paths"": {
-            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}"": {
+            ""/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}"": {
               ""get"": {
                 ""tags"": [""Store (Payment Methods)""],
-                ""summary"": ""Get Tron USDt configuration"",
-                ""operationId"": ""GetUSDtLikeStoreInformation"",
-                ""security"": [
-                    {
-                        ""API_Key"": [
-                            ""btcpay.store.canviewstoresettings""
-                        ],
-                        ""Basic"": []
-                    }
-                ],
+                ""summary"": ""Get EVM USDt configuration"",
+                ""operationId"": ""GetEvmUSDtLikeStoreInformation"",
+                ""security"": [{""API_Key"": [""btcpay.store.canviewstoresettings""], ""Basic"": []}],
                 ""parameters"": [
-                  {
-                      ""$ref"": ""#/components/parameters/StoreId""
-                  },
-                  {
-                      ""$ref"": ""#/components/parameters/PaymentMethodId""
-                  },
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
                 ],
                 ""responses"": {
                   ""200"": {
@@ -50,10 +39,7 @@ public class SwaggerProvider : ISwaggerProvider
                                 ""properties"": {
                                   ""value"": {""type"": ""string""},
                                   ""available"": {""type"": ""boolean""},
-                                  ""balance"": {
-                                    ""type"": ""number"",
-                                    ""nullable"": true
-                                  }
+                                  ""balance"": {""type"": ""number"", ""nullable"": true}
                                 }
                               }
                             }
@@ -62,9 +48,162 @@ public class SwaggerProvider : ISwaggerProvider
                       }
                     }
                   },
-                  ""404"": {
-                    ""description"": ""Not Found""
+                  ""404"": {""description"": ""Not Found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses"": {
+              ""post"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Add an EVM USDt address"",
+                ""operationId"": ""AddEvmUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
+                ],
+                ""requestBody"": {
+                  ""required"": true,
+                  ""content"": {
+                    ""application/json"": {
+                      ""schema"": {
+                        ""type"": ""object"",
+                        ""required"": [""addresses""],
+                        ""properties"": {
+                          ""addresses"": {
+                            ""type"": ""array"",
+                            ""items"": {""type"": ""string""},
+                            ""description"": ""List of EVM addresses (0x...)""
+                          }
+                        }
+                      }
+                    }
                   }
+                },
+                ""responses"": {
+                  ""200"": {""description"": ""Addresses added""},
+                  ""400"": {""description"": ""Invalid address(es) or already exist""},
+                  ""404"": {""description"": ""Payment method not found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses/{address}"": {
+              ""delete"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Remove an EVM USDt address"",
+                ""operationId"": ""DeleteEvmUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""},
+                  {
+                    ""name"": ""address"",
+                    ""in"": ""path"",
+                    ""required"": true,
+                    ""schema"": {""type"": ""string""}
+                  }
+                ],
+                ""responses"": {
+                  ""200"": {""description"": ""Address removed""},
+                  ""404"": {""description"": ""Address or payment method not found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}"": {
+              ""get"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Get Tron USDt configuration"",
+                ""operationId"": ""GetTronUSDtLikeStoreInformation"",
+                ""security"": [{""API_Key"": [""btcpay.store.canviewstoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
+                ],
+                ""responses"": {
+                  ""200"": {
+                    ""description"": ""Success"",
+                    ""content"": {
+                      ""application/json"": {
+                        ""schema"": {
+                          ""type"": ""object"",
+                          ""properties"": {
+                            ""storeId"": {""type"": ""string""},
+                            ""paymentMethodId"": {""type"": ""string""},
+                            ""enabled"": {""type"": ""boolean""},
+                            ""addresses"": {
+                              ""type"": ""array"",
+                              ""items"": {
+                                ""type"": ""object"",
+                                ""properties"": {
+                                  ""value"": {""type"": ""string""},
+                                  ""available"": {""type"": ""boolean""},
+                                  ""balance"": {""type"": ""number"", ""nullable"": true}
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  ""404"": {""description"": ""Not Found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses"": {
+              ""post"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Add a Tron USDt address"",
+                ""operationId"": ""AddTronUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""}
+                ],
+                ""requestBody"": {
+                  ""required"": true,
+                  ""content"": {
+                    ""application/json"": {
+                      ""schema"": {
+                        ""type"": ""object"",
+                        ""required"": [""addresses""],
+                        ""properties"": {
+                          ""addresses"": {
+                            ""type"": ""array"",
+                            ""items"": {""type"": ""string""},
+                            ""description"": ""List of Tron addresses (T...)""
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                ""responses"": {
+                  ""200"": {""description"": ""Addresses added""},
+                  ""400"": {""description"": ""Invalid address(es) or already exist""},
+                  ""404"": {""description"": ""Payment method not found""}
+                }
+              }
+            },
+            ""/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses/{address}"": {
+              ""delete"": {
+                ""tags"": [""Store (Payment Methods)""],
+                ""summary"": ""Remove a Tron USDt address"",
+                ""operationId"": ""DeleteTronUSDtAddress"",
+                ""security"": [{""API_Key"": [""btcpay.store.canmodifystoresettings""], ""Basic"": []}],
+                ""parameters"": [
+                  {""$ref"": ""#/components/parameters/StoreId""},
+                  {""$ref"": ""#/components/parameters/PaymentMethodId""},
+                  {
+                    ""name"": ""address"",
+                    ""in"": ""path"",
+                    ""required"": true,
+                    ""schema"": {""type"": ""string""}
+                  }
+                ],
+                ""responses"": {
+                  ""200"": {""description"": ""Address removed""},
+                  ""404"": {""description"": ""Address or payment method not found""}
                 }
               }
             }

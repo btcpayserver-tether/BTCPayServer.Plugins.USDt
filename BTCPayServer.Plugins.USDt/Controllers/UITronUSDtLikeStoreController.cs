@@ -31,7 +31,7 @@ public class UITronUSDtLikeStoreController(
     DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration) : Controller
 {
-    private StoreData StoreData => HttpContext.GetStoreData();
+    private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
 
     [HttpGet]
     public IActionResult GetStoreTronUSDtLikePaymentMethods()
@@ -143,7 +143,7 @@ public class UITronUSDtLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            var addresses = viewModel.Address.Split([',', ';', ' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(TronUSDtAddressHelper.IsValid)
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
             

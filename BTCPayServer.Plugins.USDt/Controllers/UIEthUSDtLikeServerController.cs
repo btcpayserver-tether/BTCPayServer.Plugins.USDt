@@ -1,10 +1,10 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client;
 using BTCPayServer.Filters;
+using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
@@ -16,7 +16,7 @@ using NBXplorer;
 
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
-[Route("server/EthUSDtlike")]
+[Route("server/evmUSDtlike/{paymentMethodId}")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 public class UIEthUSDtLikeServerController(
@@ -27,21 +27,19 @@ public class UIEthUSDtLikeServerController(
     EventAggregator eventAggregator) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> GetServerConfig()
+    public async Task<IActionResult> GetServerConfig(PaymentMethodId paymentMethodId)
     {
-        var ethConfiguration = usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems.SingleOrDefault().Value;
-        if (ethConfiguration is null)
-            throw new InvalidOperationException();
+        if (!usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var evmConfiguration))
+            return NotFound();
 
-        var defaultConfiguration = USDtPlugin.GetEthUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
-        var serverSettings = await settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(ethConfiguration));
+        var defaultConfiguration = USDtPlugin.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
+        var serverSettings = await settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(evmConfiguration));
 
         var viewModel = new EthUSDtLikeServerConfigViewModel
         {
-            DisplayName = ethConfiguration.DisplayName,
+            DisplayName = evmConfiguration.DisplayName,
             DefaultSmartContractAddress = defaultConfiguration.SmartContractAddress,
             DefaultJsonRpcUri = defaultConfiguration.JsonRpcUri,
-
             SmartContractAddress = serverSettings?.SmartContractAddress,
             JsonRpcUri = serverSettings?.JsonRpcUri?.AbsoluteUri
         };
@@ -50,15 +48,15 @@ public class UIEthUSDtLikeServerController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GetServerConfig(EthUSDtLikeServerConfigViewModel viewModel)
+    public async Task<IActionResult> GetServerConfig(EthUSDtLikeServerConfigViewModel viewModel, PaymentMethodId paymentMethodId)
     {
-        var currentConfiguration = usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems.SingleOrDefault().Value;
-        if (currentConfiguration is null)
-            throw new InvalidOperationException();
+        if (!usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var currentConfiguration))
+            return NotFound();
 
-        var defaultConfiguration = USDtPlugin.GetEthUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
+        var defaultConfiguration = USDtPlugin.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
         if (!ModelState.IsValid)
         {
+            viewModel.DisplayName = currentConfiguration.DisplayName;
             viewModel.DefaultSmartContractAddress = defaultConfiguration.SmartContractAddress;
             viewModel.DefaultJsonRpcUri = defaultConfiguration.JsonRpcUri;
             return View(viewModel);
@@ -72,11 +70,11 @@ public class UIEthUSDtLikeServerController(
 
         await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
 
-        usdtPluginConfiguration.EthereumUSDtLikeConfigurationItems[currentConfiguration.GetPaymentMethodId()] =
+        usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId] =
             USDtPlugin.OverrideWithServerSettings(defaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new EthUSDtSettingsChanged());
 
-        return RedirectToAction("GetServerConfig");
+        return RedirectToAction(nameof(GetServerConfig), new { paymentMethodId });
     }
 }

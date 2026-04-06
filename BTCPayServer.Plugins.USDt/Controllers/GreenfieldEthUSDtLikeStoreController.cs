@@ -19,8 +19,8 @@ namespace BTCPayServer.Plugins.USDt.Controllers;
 [ApiController]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
 [EnableCors(CorsPolicies.All)]
-public class GreenfieldTronUSDtLikeStoreController(
-    TronUSDtRPCProvider tronUSDtRpcProvider,
+public class GreenfieldEthUSDtLikeStoreController(
+    EthUSDtRPCProvider ethUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     StoreRepository storeRepository,
@@ -29,31 +29,31 @@ public class GreenfieldTronUSDtLikeStoreController(
     private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
 
     [Authorize(Policy = Policies.CanViewStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
-    [HttpGet("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}")]
-    public async Task<IActionResult> GetUSDtLikeStoreInformation(PaymentMethodId paymentMethodId)
+    [HttpGet("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}")]
+    public async Task<IActionResult> GetStoreInformation(PaymentMethodId paymentMethodId)
     {
-        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
         var matchedPaymentMethodConfig =
-            StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+            StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
             return NotFound();
 
         var balances =
-            await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+            await ethUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
-            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        return Ok(new TronUSDtPaymentMethodInformation
+        return Ok(new EthUSDtPaymentMethodInformation
         {
             StoreId = StoreData.Id,
             PaymentMethodId = paymentMethodId.ToString(),
             Enabled = !excludeFilters.Match(paymentMethodId),
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
-                new TronUSDtPaymentMethodInformation.TronUSDtPaymentMethodAddressInformation
+                new EthUSDtPaymentMethodInformation.EthUSDtPaymentMethodAddressInformation
                 {
                     Available = !reservedAddresses.Contains(s),
                     Balance = balances.Single(x => x.Item1 == s).Item2,
@@ -63,44 +63,46 @@ public class GreenfieldTronUSDtLikeStoreController(
     }
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
-    [HttpPost("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses")]
-    public async Task<IActionResult> AddAddress(PaymentMethodId paymentMethodId, [FromBody] TronUSDtAddAddressRequest request)
+    [HttpPost("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses")]
+    public async Task<IActionResult> AddAddress(PaymentMethodId paymentMethodId, [FromBody] EthUSDtAddAddressRequest request)
     {
-        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
-        var invalid = request.Addresses.Where(a => !TronUSDtAddressHelper.IsValid(a)).ToArray();
+        var invalid = request.Addresses.Where(a => !EthAddressHelper.IsValid(a)).ToArray();
         if (invalid.Length > 0)
-            return BadRequest(new { message = "Invalid Tron address(es).", addresses = invalid });
+            return BadRequest(new { message = "Invalid EVM address(es).", addresses = invalid });
 
         var store = StoreData;
-        var currentConfig = store.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers)
-                            ?? new TronUSDtPaymentMethodConfig();
+        var currentConfig = store.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers)
+                            ?? new EthUSDtPaymentMethodConfig();
 
-        var duplicates = request.Addresses.Where(a => currentConfig.Addresses.Contains(a)).ToArray();
+        var normalized = request.Addresses.Select(a => a.ToLowerInvariant()).ToArray();
+        var duplicates = normalized.Where(a => currentConfig.Addresses.Contains(a)).ToArray();
         if (duplicates.Length > 0)
             return BadRequest(new { message = "Address(es) already exist.", addresses = duplicates });
 
-        currentConfig.Addresses = [.. currentConfig.Addresses, .. request.Addresses];
+        currentConfig.Addresses = [.. currentConfig.Addresses, .. normalized];
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
         await storeRepository.UpdateStore(store);
         return Ok();
     }
 
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
-    [HttpDelete("~/api/v1/stores/{storeId}/tronUSDtlike/{paymentMethodId}/addresses/{address}")]
+    [HttpDelete("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses/{address}")]
     public async Task<IActionResult> DeleteAddress(PaymentMethodId paymentMethodId, string address)
     {
-        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
         var store = StoreData;
-        var currentConfig = store.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var currentConfig = store.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var normalized = address.ToLowerInvariant();
 
-        if (currentConfig == null || !currentConfig.Addresses.Contains(address))
+        if (currentConfig == null || !currentConfig.Addresses.Contains(normalized))
             return NotFound();
 
-        currentConfig.Addresses = currentConfig.Addresses.Where(a => a != address).ToArray();
+        currentConfig.Addresses = currentConfig.Addresses.Where(a => a != normalized).ToArray();
         store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
         await storeRepository.UpdateStore(store);
         return Ok();

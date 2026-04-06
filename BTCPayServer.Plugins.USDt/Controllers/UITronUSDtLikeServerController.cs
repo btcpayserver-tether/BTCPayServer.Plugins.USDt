@@ -94,7 +94,7 @@ public class UITronUSDtLikeServerController(
             return null;
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var lines = headersString.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        var lines = headersString.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         
         foreach (var line in lines)
         {
