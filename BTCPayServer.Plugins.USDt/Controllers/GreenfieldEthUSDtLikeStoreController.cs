@@ -1,0 +1,110 @@
+using System.Linq;
+using System.Threading.Tasks;
+using BTCPayServer.Abstractions.Constants;
+using BTCPayServer.Client;
+using BTCPayServer.Data;
+using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Controllers.Models;
+using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Services.Payments;
+using BTCPayServer.Services.Invoices;
+using BTCPayServer.Services.Stores;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BTCPayServer.Plugins.USDt.Controllers;
+
+[ApiController]
+[Authorize(AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+[EnableCors(CorsPolicies.All)]
+public class GreenfieldEthUSDtLikeStoreController(
+    EthUSDtRPCProvider ethUSDtRpcProvider,
+    PaymentMethodHandlerDictionary handlers,
+    InvoiceRepository invoiceRepository,
+    StoreRepository storeRepository,
+    USDtPluginConfiguration pluginConfiguration) : ControllerBase
+{
+    private StoreData StoreData => HttpContext.GetStoreDataOrNull()!;
+
+    [Authorize(Policy = Policies.CanViewStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+    [HttpGet("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}")]
+    public async Task<IActionResult> GetStoreInformation(PaymentMethodId paymentMethodId)
+    {
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+            return NotFound();
+
+        var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
+        var matchedPaymentMethodConfig =
+            StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+
+        if (matchedPaymentMethodConfig == null)
+            return NotFound();
+
+        var balances =
+            await ethUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+        var reservedAddresses =
+            await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+
+        return Ok(new EthUSDtPaymentMethodInformation
+        {
+            StoreId = StoreData.Id,
+            PaymentMethodId = paymentMethodId.ToString(),
+            Enabled = !excludeFilters.Match(paymentMethodId),
+            Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
+                new EthUSDtPaymentMethodInformation.EthUSDtPaymentMethodAddressInformation
+                {
+                    Available = !reservedAddresses.Contains(s),
+                    Balance = balances.Single(x => x.Item1 == s).Item2,
+                    Value = s
+                }).ToArray()
+        });
+    }
+
+    [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+    [HttpPost("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses")]
+    public async Task<IActionResult> AddAddress(PaymentMethodId paymentMethodId, [FromBody] EthUSDtAddAddressRequest request)
+    {
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+            return NotFound();
+
+        var invalid = request.Addresses.Where(a => !EthAddressHelper.IsValid(a)).ToArray();
+        if (invalid.Length > 0)
+            return BadRequest(new { message = "Invalid EVM address(es).", addresses = invalid });
+
+        var store = StoreData;
+        var currentConfig = store.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers)
+                            ?? new EthUSDtPaymentMethodConfig();
+
+        var normalized = request.Addresses.Select(a => a.ToLowerInvariant()).ToArray();
+        var duplicates = normalized.Where(a => currentConfig.Addresses.Contains(a)).ToArray();
+        if (duplicates.Length > 0)
+            return BadRequest(new { message = "Address(es) already exist.", addresses = duplicates });
+
+        currentConfig.Addresses = [.. currentConfig.Addresses, .. normalized];
+        store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
+        return Ok();
+    }
+
+    [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
+    [HttpDelete("~/api/v1/stores/{storeId}/evmUSDtlike/{paymentMethodId}/addresses/{address}")]
+    public async Task<IActionResult> DeleteAddress(PaymentMethodId paymentMethodId, string address)
+    {
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
+            return NotFound();
+
+        var store = StoreData;
+        var currentConfig = store.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var normalized = address.ToLowerInvariant();
+
+        if (currentConfig == null || !currentConfig.Addresses.Contains(normalized))
+            return NotFound();
+
+        currentConfig.Addresses = currentConfig.Addresses.Where(a => a != normalized).ToArray();
+        store.SetPaymentMethodConfig(handlers[paymentMethodId], currentConfig);
+        await storeRepository.UpdateStore(store);
+        return Ok();
+    }
+}
