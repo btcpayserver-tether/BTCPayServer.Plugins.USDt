@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class EthUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, string tokenContract, int decimals, int chainId)
+public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, string tokenContract, int decimals, int chainId)
     : IPaymentLinkExtension
 {
     private readonly string _contract = tokenContract.ToLowerInvariant();

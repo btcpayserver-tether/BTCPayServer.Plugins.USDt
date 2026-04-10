@@ -11,7 +11,7 @@ using BTCPayServer.Data;
 using BTCPayServer.Events;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
-using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Invoices;
 using Microsoft.Extensions.Hosting;
@@ -27,13 +27,13 @@ using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class EthUSDtListener(
+public class EVMUSDtListener(
     InvoiceRepository invoiceRepository,
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
-    EthUSDtRPCProvider rpcProvider,
+    EVMUSDtRPCProvider rpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
-    ILogger<EthUSDtListener> logger,
+    ILogger<EVMUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService) : IHostedService
 {
@@ -58,7 +58,7 @@ public class EthUSDtListener(
         return Task.CompletedTask;
     }
 
-    private async Task LoopIndex(EthUSDtLikeConfigurationItem configurationItem, CancellationToken stoppingToken)
+    private async Task LoopIndex(EVMUSDtLikeConfigurationItem configurationItem, CancellationToken stoppingToken)
     {
         var rateLimitBackoffMs = 5_000;
         while (stoppingToken.IsCancellationRequested == false)
@@ -66,7 +66,7 @@ public class EthUSDtListener(
             {
                 var listenerState = await LoadTrackingState(configurationItem);
                 var pmi = configurationItem.GetPaymentMethodId();
-                using var _ = logger.BeginScope("ETH PMI: {PaymentMethodId}", pmi);
+                using var _ = logger.BeginScope("EVM PMI: {PaymentMethodId}", pmi);
 
                 var web3Client = rpcProvider.GetWeb3Client(pmi);
                 if (listenerState == null)
@@ -141,7 +141,7 @@ public class EthUSDtListener(
                                                       true)
             {
                 logger.LogWarning(
-                    "Rate limit exceeded while indexing, use an Ethereum node with higher limits if possible. Retrying in {DelayMs} ms",
+                    "Rate limit exceeded while indexing, use an EVM node with higher limits if possible. Retrying in {DelayMs} ms",
                     rateLimitBackoffMs);
                 await Task.Delay(rateLimitBackoffMs, stoppingToken);
                 rateLimitBackoffMs = Math.Min(rateLimitBackoffMs * 2, 60_000);
@@ -153,15 +153,15 @@ public class EthUSDtListener(
             }
     }
 
-    private async Task SetTrackingState(EthUSDtLikeConfigurationItem config, EVMBasedListenerState trackingState)
+    private async Task SetTrackingState(EVMUSDtLikeConfigurationItem config, EVMBasedListenerState trackingState)
     {
-        await settingsRepository.UpdateSetting(trackingState, EthUSDtRPCProvider.ListenerStateSettingKey(config));
+        await settingsRepository.UpdateSetting(trackingState, EVMUSDtRPCProvider.ListenerStateSettingKey(config));
     }
 
-    private async Task<EVMBasedListenerState?> LoadTrackingState(EthUSDtLikeConfigurationItem config)
+    private async Task<EVMBasedListenerState?> LoadTrackingState(EVMUSDtLikeConfigurationItem config)
     {
         return await settingsRepository.GetSettingAsync<EVMBasedListenerState>(
-            EthUSDtRPCProvider.ListenerStateSettingKey(config));
+            EVMUSDtRPCProvider.ListenerStateSettingKey(config));
     }
 
     private Task ReceivedPayment(InvoiceEntity invoice, PaymentEntity payment)
@@ -174,7 +174,7 @@ public class EthUSDtListener(
         return Task.CompletedTask;
     }
 
-    private EthUSDtLikeConfigurationItem GetConfig(PaymentMethodId pmi)
+    private EVMUSDtLikeConfigurationItem GetConfig(PaymentMethodId pmi)
     {
         return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[pmi];
     }
@@ -184,7 +184,7 @@ public class EthUSDtListener(
     {
         if (invoices.Length == 0) return;
 
-        var handler = (EthUSDtPaymentMethodHandler)handlers[pmi];
+        var handler = (EVMUSDtPaymentMethodHandler)handlers[pmi];
 
         var expandedInvoices = invoices.Select(entity => (Invoice: entity,
                 Prompt: entity.GetPaymentPrompt(pmi),
@@ -290,8 +290,8 @@ public class EthUSDtListener(
             CultureInfo.InvariantCulture);
 
         var config = GetConfig(pmi);
-        var handler = (EthUSDtPaymentMethodHandler)handlers[pmi];
-        EthUSDtPaymentData details = new()
+        var handler = (EVMUSDtPaymentMethodHandler)handlers[pmi];
+        EVMUSDtPaymentData details = new()
         {
             To = to,
             From = from,

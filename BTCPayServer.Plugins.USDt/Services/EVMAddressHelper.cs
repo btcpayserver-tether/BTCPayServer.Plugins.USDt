@@ -2,7 +2,7 @@ using Nethereum.Util;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public static class EthAddressHelper
+public static class EVMAddressHelper
 {
     public static bool IsValid(string? address)
     {

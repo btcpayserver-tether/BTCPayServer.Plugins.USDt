@@ -2,12 +2,12 @@
 @using BTCPayServer.Data
 @using BTCPayServer.Plugins.USDt.Services
 @using Microsoft.AspNetCore.Identity
-@inject EthUSDtRPCProvider EthUSDtRpcProvider
+@inject EVMUSDtRPCProvider EvmUsdTRpcProvider
 @inject SignInManager<ApplicationUser> SignInManager;
 
-@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && EthUSDtRpcProvider.Summaries.Any())
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && EvmUsdTRpcProvider.Summaries.Any())
 {
-    foreach (var summary in EthUSDtRpcProvider.Summaries)
+    foreach (var summary in EvmUsdTRpcProvider.Summaries)
     {
         if (summary.Value != null)
         {

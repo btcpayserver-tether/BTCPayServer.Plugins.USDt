@@ -5,11 +5,11 @@
 @using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
-@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditEthUSDtPaymentMethodViewModel;
+@model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditEVMUSDtPaymentMethodViewModel;
 
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), $"{Model.DisplayName} payment settings", "EthStore");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), $"{Model.DisplayName} payment settings", "EVMStore");
 }
 <h3 class="mb-3">@Model.DisplayName payment settings</h3>
 <div class="row">

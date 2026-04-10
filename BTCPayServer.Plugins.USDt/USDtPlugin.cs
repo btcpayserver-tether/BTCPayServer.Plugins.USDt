@@ -10,7 +10,7 @@ using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
-using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Controllers;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Services.Payments;
@@ -86,21 +86,21 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
         
-        services.AddSingleton<EthUSDtRPCProvider>();
-        services.AddHostedService<EthUSDtLikeSummaryUpdaterHostedService>();
-        services.AddHostedService<EthUSDtListener>();
+        services.AddSingleton<EVMUSDtRPCProvider>();
+        services.AddHostedService<EVMUSDtLikeSummaryUpdaterHostedService>();
+        services.AddHostedService<EVMUSDtListener>();
 
         foreach (var evmUsdtConfiguration in evmUsdtConfigurations.Values)
         {
             RegisterEvmPaymentMethodServices(services, evmUsdtConfiguration);
         }
 
-        services.AddSingleton<ISyncSummaryProvider, EthUSDtSyncSummaryProvider>();
+        services.AddSingleton<ISyncSummaryProvider, EVMUSDtSyncSummaryProvider>();
 
         // Store UI extensions for all EVM chains (addresses management, checkout, server nav)
-        services.AddUIExtension("store-wallets-nav", "EthUSDtLike/StoreWalletsNavEthUSDtExtension");
+        services.AddUIExtension("store-wallets-nav", "EVMUSDtLike/StoreWalletsNavEVMUSDtExtension");
         services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
-        services.AddUIExtension("server-nav", "EthUSDtLike/ServerNavEthUSDtExtension");
+        services.AddUIExtension("server-nav", "EVMUSDtLike/ServerNavEVMUSDtExtension");
 
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
@@ -123,7 +123,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
     private static void RegisterEvmPaymentMethodServices(
         IServiceCollection services,
-        EthUSDtLikeConfigurationItem configuration)
+        EVMUSDtLikeConfigurationItem configuration)
     {
         var paymentMethodId = configuration.GetPaymentMethodId();
 
@@ -131,9 +131,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             configuration.CryptoImagePath, configuration.CurrencyDisplayName, configuration.DisplayName);
 
         services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider,
-            typeof(EthUSDtPaymentMethodHandler), configuration));
+            typeof(EVMUSDtPaymentMethodHandler), configuration));
         services.AddSingleton<IPaymentLinkExtension>(provider =>
-            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension),
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EVMUSDtPaymentLinkExtension),
                 paymentMethodId, configuration.SmartContractAddress, configuration.Divisibility, configuration.ChainId));
     }
 
@@ -241,7 +241,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
     /// <summary>
     /// Returns the default (app-config-overridden) configuration for any registered EVM chain by its payment method id.
     /// </summary>
-    public static EthUSDtLikeConfigurationItem GetEVMUSDtDefaultConfigurationItem(
+    public static EVMUSDtLikeConfigurationItem GetEVMUSDtDefaultConfigurationItem(
         PaymentMethodId paymentMethodId,
         NBXplorerNetworkProvider networkProvider,
         IConfiguration configuration)
@@ -253,7 +253,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         throw new NotSupportedException($"Unsupported EVM payment method id {paymentMethodId}");
     }
 
-    public static Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem> GetEVMUSDtLikeDefaultConfigurationItems(
+    public static Dictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetEVMUSDtLikeDefaultConfigurationItems(
         NBXplorerNetworkProvider networkProvider,
         IConfiguration configuration)
     {
@@ -262,27 +262,27 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             .ToDictionary(configItem => configItem.GetPaymentMethodId());
     }
 
-    private static IEnumerable<EthUSDtLikeConfigurationItem> GetEVMUSDtHardcodedConfigs(ChainName chainName)
+    private static IEnumerable<EVMUSDtLikeConfigurationItem> GetEVMUSDtHardcodedConfigs(ChainName chainName)
     {
         yield return GetEthUSDtHardcodedConfig(chainName);
         yield return GetPolygonUSDtHardcodedConfig(chainName);
     }
 
-    public static EthUSDtLikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
+    public static EVMUSDtLikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
     {
         var ethConfig = GetEthUSDtHardcodedConfig(networkProvider.NetworkType);
         ethConfig = OverrideWithAppConfig(ethConfig, configuration);
         return ethConfig;
     }
 
-    public static EthUSDtLikeConfigurationItem GetPolygonUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
+    public static EVMUSDtLikeConfigurationItem GetPolygonUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
     {
         var polygonConfig = GetPolygonUSDtHardcodedConfig(networkProvider.NetworkType);
         polygonConfig = OverrideWithAppConfig(polygonConfig, configuration);
         return polygonConfig;
     }
 
-    private static EthUSDtLikeConfigurationItem OverrideWithAppConfig(EthUSDtLikeConfigurationItem config, IConfiguration configuration)
+    private static EVMUSDtLikeConfigurationItem OverrideWithAppConfig(EVMUSDtLikeConfigurationItem config, IConfiguration configuration)
     {
         return config with
         {
@@ -291,9 +291,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    public static EthUSDtLikeConfigurationItem OverrideWithServerSettings(EthUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
+    public static EVMUSDtLikeConfigurationItem OverrideWithServerSettings(EVMUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
     {
-        var serverSettings = settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
+        var serverSettings = settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
 
         if (serverSettings == null)
             return config;
@@ -305,7 +305,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    private static EthUSDtLikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
+    private static EVMUSDtLikeConfigurationItem GetEthUSDtHardcodedConfig(ChainName chainName)
     {
         const string ethLogo =
             "data:image/svg+xml,%3Csvg width='165' height='165' viewBox='0 0 165 165' fill='none' xmlns='http://www.w3.org/2000/svg'%3E" +
@@ -327,7 +327,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         return chainName switch
         {
-            _ when chainName == ChainName.Mainnet => new EthUSDtLikeConfigurationItem(Constants.EthereumChainName)
+            _ when chainName == ChainName.Mainnet => new EVMUSDtLikeConfigurationItem(Constants.EthereumChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
@@ -347,7 +347,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 BlockExplorerLink = "https://etherscan.io/tx/{0}",
                 ChainId = 1
             },
-            _ when chainName == ChainName.Testnet => new EthUSDtLikeConfigurationItem(Constants.SepoliaChainName)
+            _ when chainName == ChainName.Testnet => new EVMUSDtLikeConfigurationItem(Constants.SepoliaChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
@@ -374,7 +374,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    private static EthUSDtLikeConfigurationItem GetPolygonUSDtHardcodedConfig(ChainName chainName)
+    private static EVMUSDtLikeConfigurationItem GetPolygonUSDtHardcodedConfig(ChainName chainName)
     {
         // Polygon purple: #8247E5
         const string polygonLogo =
@@ -390,7 +390,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         return chainName switch
         {
-            _ when chainName == ChainName.Mainnet => new EthUSDtLikeConfigurationItem(Constants.PolygonChainName)
+            _ when chainName == ChainName.Mainnet => new EVMUSDtLikeConfigurationItem(Constants.PolygonChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
@@ -411,7 +411,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
                 BlockTimeSeconds = 2.0,
                 ChainId = 137
             },
-            _ when chainName == ChainName.Testnet => new EthUSDtLikeConfigurationItem(Constants.AmoyChainName)
+            _ when chainName == ChainName.Testnet => new EVMUSDtLikeConfigurationItem(Constants.AmoyChainName)
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,

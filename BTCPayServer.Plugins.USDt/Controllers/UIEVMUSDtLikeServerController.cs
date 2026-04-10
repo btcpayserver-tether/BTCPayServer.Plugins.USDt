@@ -6,7 +6,7 @@ using BTCPayServer.Client;
 using BTCPayServer.Filters;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
-using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 using BTCPayServer.Plugins.USDt.Services.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +19,7 @@ namespace BTCPayServer.Plugins.USDt.Controllers;
 [Route("server/evmUSDtlike/{paymentMethodId}")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-public class UIEthUSDtLikeServerController(
+public class UIEVMUSDtLikeServerController(
     IConfiguration configuration,
     ISettingsRepository settingsRepository,
     NBXplorerNetworkProvider nbXplorerNetworkProvider,
@@ -33,9 +33,9 @@ public class UIEthUSDtLikeServerController(
             return NotFound();
 
         var defaultConfiguration = USDtPlugin.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
-        var serverSettings = await settingsRepository.GetSettingAsync<EthUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(evmConfiguration));
+        var serverSettings = await settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(evmConfiguration));
 
-        var viewModel = new EthUSDtLikeServerConfigViewModel
+        var viewModel = new EVMUSDtLikeServerConfigViewModel
         {
             DisplayName = evmConfiguration.DisplayName,
             ChainDisplayName = evmConfiguration.Chain,
@@ -49,7 +49,7 @@ public class UIEthUSDtLikeServerController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GetServerConfig(EthUSDtLikeServerConfigViewModel viewModel, PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetServerConfig(EVMUSDtLikeServerConfigViewModel viewModel, PaymentMethodId paymentMethodId)
     {
         if (!usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var currentConfiguration))
             return NotFound();
@@ -64,7 +64,7 @@ public class UIEthUSDtLikeServerController(
             return View(viewModel);
         }
 
-        var serverSettings = new EthUSDtLikeServerSettings
+        var serverSettings = new EVMUSDtLikeServerSettings
         {
             SmartContractAddress = string.IsNullOrWhiteSpace(viewModel.SmartContractAddress) ? null : viewModel.SmartContractAddress,
             JsonRpcUri = string.IsNullOrWhiteSpace(viewModel.JsonRpcUri) ? null : new Uri(viewModel.JsonRpcUri)

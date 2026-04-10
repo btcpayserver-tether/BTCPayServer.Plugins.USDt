@@ -20,12 +20,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.USDt.Controllers;
 
-[Route("stores/{storeId}/EthUSDtlike")]
+[Route("stores/{storeId}/evmUSDtlike")]
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-public class UIEthUSDtLikeStoreController(
+public class UIEVMUSDtLikeStoreController(
     StoreRepository storeRepository,
-    EthUSDtRPCProvider EthUSDtRpcProvider,
+    EVMUSDtRPCProvider evmUsdTRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
@@ -34,7 +34,7 @@ public class UIEthUSDtLikeStoreController(
     private StoreData StoreData => HttpContext.GetStoreData();
 
     [HttpGet]
-    public IActionResult GetStoreEthUSDtLikePaymentMethods()
+    public IActionResult GetStoreEVMUSDtLikePaymentMethods()
     {
         var vm = GetVM(StoreData);
         return View(vm);
@@ -49,7 +49,7 @@ public class UIEthUSDtLikeStoreController(
         foreach (var item in pluginConfiguration.EVMUSDtLikeConfigurationItems.Values)
         {
             var pmi = item.GetPaymentMethodId();
-            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(pmi, handlers);
+            var matchedPaymentMethod = storeData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(pmi, handlers);
             vm.Items.Add(new ViewUSDtStoreOptionItemViewModel
             {
                 PaymentMethodId = pmi,
@@ -63,16 +63,16 @@ public class UIEthUSDtLikeStoreController(
     }
 
     [HttpGet("{paymentMethodId}")]
-    public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
     {
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var config))
             return NotFound();
 
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
-        var matchedPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        var matchedPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
-            return View(new EditEthUSDtPaymentMethodViewModel
+            return View(new EditEVMUSDtPaymentMethodViewModel
             {
                 DisplayName = config.DisplayName,
                 ChainDisplayName = config.Chain,
@@ -80,18 +80,18 @@ public class UIEthUSDtLikeStoreController(
             });
 
         var balances =
-            await EthUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+            await evmUsdTRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
-            await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await EVMUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        return View(new EditEthUSDtPaymentMethodViewModel
+        return View(new EditEVMUSDtPaymentMethodViewModel
         {
             DisplayName = config.DisplayName,
             ChainDisplayName = config.Chain,
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
-                new EditEthUSDtPaymentMethodViewModel.EditEthUSDtPaymentMethodAddressViewModel
+                new EditEVMUSDtPaymentMethodViewModel.EditEVMUSDtPaymentMethodAddressViewModel
                 {
                     Available = reservedAddresses.Contains(s) == false,
                     Balance = balances.Single(x => x.Item1 == s).Item2 == null
@@ -112,7 +112,7 @@ public class UIEthUSDtLikeStoreController(
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
         var currentPaymentMethodConfig =
-            StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+            StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         if (currentPaymentMethodConfig is null) return NotFound();
 
         currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
@@ -126,12 +126,12 @@ public class UIEthUSDtLikeStoreController(
             Severity = StatusMessageModel.StatusSeverity.Success
         });
 
-        return RedirectToAction(nameof(GetStoreEthUSDtLikePaymentMethod), new { storeId, paymentMethodId });
+        return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod), new { storeId, paymentMethodId });
     }
 
     [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> GetStoreEthUSDtLikePaymentMethod(EditEthUSDtPaymentMethodViewModel viewModel,
+    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditEVMUSDtPaymentMethodViewModel viewModel,
         PaymentMethodId paymentMethodId)
     {
         if (pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
@@ -139,13 +139,13 @@ public class UIEthUSDtLikeStoreController(
 
         var store = StoreData;
         var blob = StoreData.GetStoreBlob();
-        var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
-        currentPaymentMethodConfig ??= new EthUSDtPaymentMethodConfig();
+        var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
+        currentPaymentMethodConfig ??= new EVMUSDtPaymentMethodConfig();
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
             var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(EthAddressHelper.IsValid)
+            .Where(EVMAddressHelper.IsValid)
                 .Select(a => a.ToLowerInvariant())
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
 
@@ -157,7 +157,7 @@ public class UIEthUSDtLikeStoreController(
                     Severity = StatusMessageModel.StatusSeverity.Error
                 });
 
-                return RedirectToAction("GetStoreEthUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId = paymentMethodId });
+                return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod), new { storeId = store.Id, paymentMethodId });
             }
 
             currentPaymentMethodConfig.Addresses =
@@ -198,6 +198,6 @@ public class UIEthUSDtLikeStoreController(
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
 
-        return RedirectToAction("GetStoreEthUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
+        return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod), new { storeId = store.Id, paymentMethodId });
     }
 }

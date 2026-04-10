@@ -4,7 +4,7 @@ using BTCPayServer.Services.Invoices;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class EthUSDtPaymentMethodConfig : USDtPaymentMethodConfig
+public class EVMUSDtPaymentMethodConfig : USDtPaymentMethodConfig
 {
     public async Task<string?> GetOneNotReservedAddress(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)
