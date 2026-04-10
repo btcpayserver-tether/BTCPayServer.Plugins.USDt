@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BTCPayServer.Logging;
 using BTCPayServer.Payments;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
