@@ -75,7 +75,7 @@ public class UIEthUSDtLikeServerController(
         usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId] =
             USDtPlugin.OverrideWithServerSettings(defaultConfiguration, settingsRepository);
 
-        eventAggregator.Publish(new EthUSDtSettingsChanged());
+        eventAggregator.Publish(new USDtSettingsChanged());
 
         return RedirectToAction(nameof(GetServerConfig), new { paymentMethodId });
     }
