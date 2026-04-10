@@ -16,13 +16,13 @@ public class USDtPluginConfigurationBootstrapper(
         foreach (var pair in pluginConfiguration.TronUSDtLikeConfigurationItems)
         {
             pluginConfiguration.TronUSDtLikeConfigurationItems[pair.Key] =
-                await USDtPlugin.OverrideWithServerSettingsAsync(pair.Value, settingsRepository);
+                await USDtConfigurationProvider.OverrideWithServerSettingsAsync(pair.Value, settingsRepository);
         }
 
         foreach (var pair in pluginConfiguration.EVMUSDtLikeConfigurationItems)
         {
             pluginConfiguration.EVMUSDtLikeConfigurationItems[pair.Key] =
-                await USDtPlugin.OverrideWithServerSettingsAsync(pair.Value, settingsRepository);
+                await USDtConfigurationProvider.OverrideWithServerSettingsAsync(pair.Value, settingsRepository);
         }
 
         eventAggregator.Publish(new USDtSettingsChanged());

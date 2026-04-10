@@ -32,8 +32,8 @@ public class UIEVMUSDtLikeServerController(
         if (!usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var evmConfiguration))
             return NotFound();
 
-        var defaultConfiguration = USDtPlugin.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
-        var serverSettings = await settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(evmConfiguration));
+        var defaultConfiguration = USDtConfigurationProvider.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
+        var serverSettings = await settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(USDtConfigurationProvider.ServerSettingsKey(evmConfiguration));
 
         var viewModel = new EVMUSDtLikeServerConfigViewModel
         {
@@ -54,7 +54,7 @@ public class UIEVMUSDtLikeServerController(
         if (!usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var currentConfiguration))
             return NotFound();
 
-        var defaultConfiguration = USDtPlugin.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
+        var defaultConfiguration = USDtConfigurationProvider.GetEVMUSDtDefaultConfigurationItem(paymentMethodId, nbXplorerNetworkProvider, configuration);
         if (!ModelState.IsValid)
         {
             viewModel.DisplayName = currentConfiguration.DisplayName;
@@ -70,10 +70,10 @@ public class UIEVMUSDtLikeServerController(
             JsonRpcUri = string.IsNullOrWhiteSpace(viewModel.JsonRpcUri) ? null : new Uri(viewModel.JsonRpcUri)
         };
 
-        await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
+        await settingsRepository.UpdateSetting(serverSettings, USDtConfigurationProvider.ServerSettingsKey(currentConfiguration));
 
         usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId] =
-            await USDtPlugin.OverrideWithServerSettingsAsync(defaultConfiguration, settingsRepository);
+            await USDtConfigurationProvider.OverrideWithServerSettingsAsync(defaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new USDtSettingsChanged());
 
