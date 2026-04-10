@@ -70,22 +70,13 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         });
 
         var tronUSDtPaymentMethodId = tronUSDtConfiguration.GetPaymentMethodId();
-        services.AddTransactionLinkProvider(tronUSDtPaymentMethodId, new USDtTransactionLinkProvider(tronUSDtConfiguration.BlockExplorerLink));
         services.AddSingleton<TronUSDtRPCProvider>();
         services.AddHostedService<TronUSDtLikeSummaryUpdaterHostedService>();
         services.AddHostedService<TronUSDtListener>();
 
         services.AddSingleton(new DefaultRules(tronUSDtConfiguration.DefaultRateRules));
 
-        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtLikePaymentMethodHandler),
-            tronUSDtConfiguration));
-        services.AddSingleton<IPaymentLinkExtension>(provider =>
-            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentLinkExtension), tronUSDtPaymentMethodId));
-        services.AddSingleton(provider =>
-            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(USDtCheckoutModelExtension),
-                tronUSDtPaymentMethodId, tronUSDtConfiguration.CryptoImagePath, tronUSDtConfiguration.CurrencyDisplayName));
-        
-        services.AddDefaultPrettyName(tronUSDtPaymentMethodId, tronUSDtConfiguration.DisplayName);
+        RegisterTronPaymentMethodServices(services, tronUSDtConfiguration);
 
         // For future usages (multiple TRC20)
         //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDt/StoreNavTronUSDtExtension", "store-integrations-nav"));
@@ -101,21 +92,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         foreach (var evmUsdtConfiguration in evmUsdtConfigurations.Values)
         {
-            var paymentMethodId = evmUsdtConfiguration.GetPaymentMethodId();
-            services.AddTransactionLinkProvider(paymentMethodId,
-                new USDtTransactionLinkProvider(evmUsdtConfiguration.BlockExplorerLink));
-
-            services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider,
-                typeof(EthUSDtPaymentMethodHandler), evmUsdtConfiguration));
-            services.AddSingleton<IPaymentLinkExtension>(provider =>
-                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension),
-                    paymentMethodId, evmUsdtConfiguration.SmartContractAddress, evmUsdtConfiguration.Divisibility,
-                    evmUsdtConfiguration.ChainId));
-            services.AddSingleton(provider =>
-                (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(USDtCheckoutModelExtension),
-                    paymentMethodId, evmUsdtConfiguration.CryptoImagePath, evmUsdtConfiguration.CurrencyDisplayName));
-
-            services.AddDefaultPrettyName(paymentMethodId, evmUsdtConfiguration.DisplayName);
+            RegisterEvmPaymentMethodServices(services, evmUsdtConfiguration);
         }
 
         services.AddSingleton<ISyncSummaryProvider, EthUSDtSyncSummaryProvider>();
@@ -126,6 +103,53 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("server-nav", "EthUSDtLike/ServerNavEthUSDtExtension");
 
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
+    }
+
+    private static void RegisterTronPaymentMethodServices(
+        IServiceCollection services,
+        TronUSDtLikeConfigurationItem configuration)
+    {
+        var paymentMethodId = configuration.GetPaymentMethodId();
+
+        RegisterCommonPaymentMethodServices(services, paymentMethodId, configuration.BlockExplorerLink,
+            configuration.CryptoImagePath, configuration.CurrencyDisplayName, configuration.DisplayName);
+
+        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider,
+            typeof(TronUSDtLikePaymentMethodHandler), configuration));
+        services.AddSingleton<IPaymentLinkExtension>(provider =>
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentLinkExtension),
+                paymentMethodId));
+    }
+
+    private static void RegisterEvmPaymentMethodServices(
+        IServiceCollection services,
+        EthUSDtLikeConfigurationItem configuration)
+    {
+        var paymentMethodId = configuration.GetPaymentMethodId();
+
+        RegisterCommonPaymentMethodServices(services, paymentMethodId, configuration.BlockExplorerLink,
+            configuration.CryptoImagePath, configuration.CurrencyDisplayName, configuration.DisplayName);
+
+        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider,
+            typeof(EthUSDtPaymentMethodHandler), configuration));
+        services.AddSingleton<IPaymentLinkExtension>(provider =>
+            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension),
+                paymentMethodId, configuration.SmartContractAddress, configuration.Divisibility, configuration.ChainId));
+    }
+
+    private static void RegisterCommonPaymentMethodServices(
+        IServiceCollection services,
+        PaymentMethodId paymentMethodId,
+        string blockExplorerLink,
+        string cryptoImagePath,
+        string currencyDisplayName,
+        string displayName)
+    {
+        services.AddTransactionLinkProvider(paymentMethodId, new USDtTransactionLinkProvider(blockExplorerLink));
+        services.AddSingleton(provider =>
+            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(USDtCheckoutModelExtension),
+                paymentMethodId, cryptoImagePath, currencyDisplayName));
+        services.AddDefaultPrettyName(paymentMethodId, displayName);
     }
 
 
