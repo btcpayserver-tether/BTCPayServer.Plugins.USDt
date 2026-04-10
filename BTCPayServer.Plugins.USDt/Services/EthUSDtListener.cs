@@ -37,12 +37,6 @@ public class EthUSDtListener(
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService) : IHostedService
 {
-    public static readonly List<InvoiceStatus> StatusToTrack =
-    [
-        InvoiceStatus.New,
-        InvoiceStatus.Processing
-    ];
-
     private readonly CompositeDisposable _leases = new();
     private CancellationTokenSource? _cts;
 
@@ -97,8 +91,8 @@ public class EthUSDtListener(
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if ((await invoiceRepository.GetMonitoredInvoices(pmi, true, stoppingToken)).Any(i =>
-                            StatusToTrack.Any(s => s == i.Status)) ==
+                        if ((await invoiceRepository.GetMonitoredInvoices(pmi, true, stoppingToken)).Any(i =>
+                            USDtListenerShared.StatusToTrack.Contains(i.Status)) ==
                         false)
                     {
                         var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
@@ -326,7 +320,7 @@ public class EthUSDtListener(
         CancellationToken stoppingToken)
     {
         var invoices = (await invoiceRepository.GetMonitoredInvoices(pmi, true))
-            .Where(i => StatusToTrack.Contains(i.Status))
+            .Where(i => USDtListenerShared.StatusToTrack.Contains(i.Status))
             .Where(i => i.GetPaymentPrompt(pmi)?.Activated is true)
             .ToArray();
 
