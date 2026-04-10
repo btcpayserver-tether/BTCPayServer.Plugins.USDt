@@ -1,29 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
-using BTCPayServer.Client.Models;
 using BTCPayServer.Data;
-using BTCPayServer.Events;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services.Invoices;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NBXplorer;
-using Nethereum.BlockchainProcessing.BlockStorage.Entities.Mapping;
 using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
-using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
@@ -35,176 +27,49 @@ public class EVMUSDtListener(
     USDtPluginConfiguration usdtPluginConfiguration,
     ILogger<EVMUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
-    PaymentService paymentService) : IHostedService
+    PaymentService paymentService)
+    : USDtListener<EVMUSDtLikeConfigurationItem, EVMUSDtPaymentData>(
+        invoiceRepository,
+        settingsRepository,
+        eventAggregator,
+        rpcProvider,
+        logger,
+        handlers,
+        paymentService)
 {
-    private readonly CompositeDisposable _leases = new();
-    private CancellationTokenSource? _cts;
+    private readonly ILogger<EVMUSDtListener> _logger = logger;
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override IReadOnlyDictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetConfigurations()
     {
-        if (usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
-
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        foreach (var kv in usdtPluginConfiguration.EVMUSDtLikeConfigurationItems)
-            _ = LoopIndex(kv.Value, _cts.Token);
-        return Task.CompletedTask;
+        return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems;
     }
 
-
-    public Task StopAsync(CancellationToken cancellationToken)
+    protected override string GetListenerStateSettingKey(EVMUSDtLikeConfigurationItem config)
     {
-        _leases.Dispose();
-        _cts?.Cancel();
-        return Task.CompletedTask;
+        return EVMUSDtRPCProvider.ListenerStateSettingKey(config);
     }
 
-    private async Task LoopIndex(EVMUSDtLikeConfigurationItem configurationItem, CancellationToken stoppingToken)
+    protected override string RateLimitNodeName => "EVM";
+
+    protected override bool UseExponentialRateLimitBackoff => true;
+
+    protected override IDisposable? BeginLoggingScope(PaymentMethodId paymentMethodId)
     {
-        var rateLimitBackoffMs = 5_000;
-        while (stoppingToken.IsCancellationRequested == false)
-            try
-            {
-                var listenerState = await LoadTrackingState(configurationItem);
-                var pmi = configurationItem.GetPaymentMethodId();
-                using var _ = logger.BeginScope("EVM PMI: {PaymentMethodId}", pmi);
-
-                var web3Client = rpcProvider.GetWeb3Client(pmi);
-                if (listenerState == null)
-                {
-                    logger.LogInformation("No tracking state found, new blockchain");
-
-                    var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
-
-                    listenerState = new EVMBasedListenerState { LastBlockHeight = (long)latestBlockNumber.Value - 1 };
-                    await SetTrackingState(configurationItem, listenerState);
-                }
-                else
-                {
-                    var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
-
-                    logger.LogInformation(
-                        "Tracking state, current={CurrentBlockNumber}, latest={LatestBlockNumber}",
-                        listenerState.LastBlockHeight, latestBlockNumber);
-                }
-
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                        if ((await invoiceRepository.GetMonitoredInvoices(pmi, true, stoppingToken)).Any(i =>
-                            USDtListenerShared.StatusToTrack.Contains(i.Status)) ==
-                        false)
-                    {
-                        var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
-                        if (lastBlockNumber.Value > listenerState.LastBlockHeight)
-                        {
-                            logger.LogInformation("New block avoid from {BlockNumber} to {NewBlockNumber}",
-                                listenerState.LastBlockHeight, lastBlockNumber.Value);
-                            listenerState.LastBlockHeight = (long)lastBlockNumber.Value;
-                        }
-
-                        await Task.Delay(30_000, stoppingToken);
-                    }
-                    else
-                    {
-                        var block =
-                            await web3Client.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(
-                                new BlockParameter(
-                                    new HexBigInteger(listenerState.LastBlockHeight + new BigInteger(1))));
-
-                        if (block != null)
-                        {
-                            await OnNewBlockToIndex(pmi, block, stoppingToken);
-                            logger.LogInformation("New block indexed {BlockNumber}", block.Number);
-
-                            listenerState.LastBlockHeight = (long)block.Number.Value;
-                        }
-                        else
-                        {
-                            logger.LogInformation("Block not present on node yet {BlockNumber}",
-                                listenerState.LastBlockHeight);
-                            await Task.Delay(1_000, stoppingToken);
-                        }
-                    }
-
-
-                    await SetTrackingState(configurationItem, listenerState);
-                    rateLimitBackoffMs = 5_000; // reset after successful iteration
-                }
-            }
-            catch (RpcClientTimeoutException)
-            {
-                logger.LogWarning("Timeout while indexing, is the node running? Retrying in 10 seconds");
-                await Task.Delay(5_000, stoppingToken);
-            }
-            catch (RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") ==
-                                                      true)
-            {
-                logger.LogWarning(
-                    "Rate limit exceeded while indexing, use an EVM node with higher limits if possible. Retrying in {DelayMs} ms",
-                    rateLimitBackoffMs);
-                await Task.Delay(rateLimitBackoffMs, stoppingToken);
-                rateLimitBackoffMs = Math.Min(rateLimitBackoffMs * 2, 60_000);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "An error occurred while indexing");
-                await Task.Delay(10_000, stoppingToken);
-            }
+        return _logger.BeginScope("EVM PMI: {PaymentMethodId}", paymentMethodId);
     }
 
-    private async Task SetTrackingState(EVMUSDtLikeConfigurationItem config, EVMBasedListenerState trackingState)
-    {
-        await settingsRepository.UpdateSetting(trackingState, EVMUSDtRPCProvider.ListenerStateSettingKey(config));
-    }
-
-    private async Task<EVMBasedListenerState?> LoadTrackingState(EVMUSDtLikeConfigurationItem config)
-    {
-        return await settingsRepository.GetSettingAsync<EVMBasedListenerState>(
-            EVMUSDtRPCProvider.ListenerStateSettingKey(config));
-    }
-
-    private Task ReceivedPayment(InvoiceEntity invoice, PaymentEntity payment)
-    {
-        logger.LogInformation(
-            $"Invoice {invoice.Id} received payment {payment.Value} {payment.Currency} {payment.Id}");
-
-        eventAggregator.Publish(
-            new InvoiceEvent(invoice, InvoiceEvent.ReceivedPayment) { Payment = payment });
-        return Task.CompletedTask;
-    }
-
-    private EVMUSDtLikeConfigurationItem GetConfig(PaymentMethodId pmi)
-    {
-        return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[pmi];
-    }
-
-    private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block,
+    protected override async Task<IReadOnlyCollection<USDtTransferMatch>> GetTransfersAsync(
+        PaymentMethodId paymentMethodId,
+        BlockWithTransactions block,
+        IReadOnlyDictionary<string, InvoiceEntity> invoicesPerAddress,
         CancellationToken stoppingToken)
     {
-        if (invoices.Length == 0) return;
+        var configuration = usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId];
+        var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
+        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(configuration.SmartContractAddress.ToLowerInvariant());
 
-        var handler = (EVMUSDtPaymentMethodHandler)handlers[pmi];
-
-        var expandedInvoices = invoices.Select(entity => (Invoice: entity,
-                Prompt: entity.GetPaymentPrompt(pmi),
-                PaymentMethodDetails: handler.ParsePaymentPromptDetails(entity.GetPaymentPrompt(pmi)!.Details)))
-            .Select(tuple => (
-                tuple.Invoice,
-                tuple.PaymentMethodDetails,
-                tuple.Prompt
-            )).ToArray();
-
-        var invoicesPerAddress = expandedInvoices.Where(i => i.Prompt is { Destination: not null })
-            .ToDictionary(i => i.Prompt!.Destination!.ToLowerInvariant(), i => i);
-
-        var web3Client = rpcProvider.GetWeb3Client(pmi);
-        var transferEvent =
-            web3Client.Eth.GetEvent<TransferEventDTO>(GetConfig(pmi).SmartContractAddress.ToLowerInvariant());
-
-        // Build batched topic filter on destination addresses to keep logs light
         var toAddresses = invoicesPerAddress.Keys.ToArray();
-        var changes = new List<EventLog<TransferEventDTO>>();
+        List<EventLog<TransferEventDTO>> changes = [];
         var tries = 0;
         do
         {
@@ -213,8 +78,6 @@ public class EVMUSDtListener(
             for (var i = 0; i < toAddresses.Length; i += batchSize)
             {
                 var toAddress = toAddresses[i];
-                // Use overload: CreateFilterInput(firstIndexed, secondIndexed, fromBlock, toBlock)
-                // ERC20 Transfer has two indexed params: from (topic1), to (topic2). We wildcard 'from' and filter on single 'to'.
                 var filter = transferEvent.CreateFilterInput(
                     (object?)null,
                     (object)toAddress,
@@ -231,109 +94,32 @@ public class EVMUSDtListener(
             await Task.Delay(250, stoppingToken);
         } while (tries++ < 3);
 
-        if (changes == null)
-            throw new InvalidOperationException($"Unable to get changes {block.Number}");
-
-        var matches = changes
-            .Where(t => t.Log.Removed == false)
-            .Where(t => invoicesPerAddress.ContainsKey(t.Event.To.ToLowerInvariant()));
-
-        foreach (var t in matches)
-        {
-            var (invoice, _, _) =
-                invoicesPerAddress[t.Event.To.ToLowerInvariant()];
-            await HandlePaymentData(pmi, t.Event.From,
+        return changes
+            .Where(t => !t.Log.Removed)
+            .Select(t => new USDtTransferMatch(
+                t.Event.To.ToLowerInvariant(),
+                t.Event.From,
                 t.Event.To,
                 t.Event.Value,
-                $"{t.Log.TransactionHash.Replace("0x", "")}-{t.Log.TransactionIndex}", 0, block.Number.ToLong(),
-                invoice);
-        }
-
-        var updatedPaymentEntities = new List<(PaymentEntity Payment, InvoiceEntity invoice)>();
-        foreach (var invoice in invoices)
-        foreach (var payment in GetPendingPayments(invoice, pmi))
-        {
-            var paymentData = handler.ParsePaymentDetails(payment.Details);
-            var confDiff = block.Number.Value - paymentData.BlockHeight;
-            var confs = confDiff < 0 ? 0 : (long)confDiff;
-            paymentData.ConfirmationCount = confs > int.MaxValue ? int.MaxValue : (int)confs;
-
-            payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
-                ? PaymentStatus.Settled
-                : PaymentStatus.Processing;
-            payment.SetDetails(handler, paymentData);
-
-            updatedPaymentEntities.Add((payment, invoice));
-        }
-
-        await paymentService.UpdatePayments(updatedPaymentEntities.Select(tuple => tuple.Payment).ToList());
-        foreach (var valueTuples in updatedPaymentEntities.GroupBy(entity => entity.invoice))
-            if (valueTuples.Any())
-                eventAggregator.Publish(new InvoiceNeedUpdateEvent(valueTuples.Key.Id));
+                $"{t.Log.TransactionHash.Replace("0x", "")}-{t.Log.TransactionIndex}"))
+            .Where(match => invoicesPerAddress.ContainsKey(match.DestinationKey))
+            .ToArray();
     }
 
-    private async Task OnNewBlockToIndex(PaymentMethodId pmi, BlockWithTransactions block,
-        CancellationToken stoppingToken)
-    {
-        await UpdateAnyPendingPayment(pmi, block, stoppingToken);
-    }
-
-    private async Task HandlePaymentData(
-        PaymentMethodId pmi,
+    protected override EVMUSDtPaymentData CreatePaymentDetails(
         string from,
         string to,
-        BigInteger totalAmount,
-        string txId, int confirmations, long blockHeight, InvoiceEntity invoice)
+        string transactionId,
+        int confirmations,
+        long blockHeight)
     {
-        var totalAmountBigDecimal = decimal.Parse(
-            Web3.Convert.FromWeiToBigDecimal(totalAmount, GetConfig(pmi).Divisibility).ToString(),
-            CultureInfo.InvariantCulture);
-
-        var config = GetConfig(pmi);
-        var handler = (EVMUSDtPaymentMethodHandler)handlers[pmi];
-        EVMUSDtPaymentData details = new()
+        return new EVMUSDtPaymentData
         {
             To = to,
             From = from,
-            TransactionId = txId,
+            TransactionId = transactionId,
             ConfirmationCount = confirmations,
             BlockHeight = blockHeight
         };
-
-        var paymentData = new PaymentData
-        {
-            Status = details.PaymentConfirmed(invoice.SpeedPolicy) ? PaymentStatus.Settled : PaymentStatus.Processing,
-            Amount = totalAmountBigDecimal,
-            Created = DateTimeOffset.UtcNow,
-            Id = txId,
-            Currency = config.Currency,
-            InvoiceDataId = invoice.Id
-        }.Set(invoice, handler, details);
-
-        var payment = await paymentService.AddPayment(paymentData, [txId]);
-        if (payment != null)
-            await ReceivedPayment(invoice, payment);
-    }
-
-
-    private async Task UpdateAnyPendingPayment(PaymentMethodId pmi, BlockWithTransactions block,
-        CancellationToken stoppingToken)
-    {
-        var invoices = (await invoiceRepository.GetMonitoredInvoices(pmi, true))
-            .Where(i => USDtListenerShared.StatusToTrack.Contains(i.Status))
-            .Where(i => i.GetPaymentPrompt(pmi)?.Activated is true)
-            .ToArray();
-
-        if (invoices.Length == 0)
-            return;
-
-        await UpdatePaymentStates(pmi, invoices, block, stoppingToken);
-    }
-
-    private static IEnumerable<PaymentEntity> GetPendingPayments(InvoiceEntity invoice, PaymentMethodId pmi)
-    {
-        return invoice.GetPayments(false)
-            .Where(p => p.PaymentMethodId == pmi)
-            .Where(p => p.Status == PaymentStatus.Processing);
     }
 }
