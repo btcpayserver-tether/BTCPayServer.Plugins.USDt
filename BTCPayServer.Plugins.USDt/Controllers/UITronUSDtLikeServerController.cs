@@ -35,9 +35,9 @@ public class UITronUSDtLikeServerController(
         if (tronUSDtConfiguration is null)
             throw new InvalidOperationException();
 
-        var tronUSDtDefaultConfiguration = USDtPlugin.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
+        var tronUSDtDefaultConfiguration = USDtConfigurationProvider.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
 
-        var serverSettings = await settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(USDtPlugin.ServerSettingsKey(tronUSDtConfiguration));
+        var serverSettings = await settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(USDtConfigurationProvider.ServerSettingsKey(tronUSDtConfiguration));
 
         var viewModel = new TronUSDtLikeServerConfigViewModel()
         {
@@ -60,7 +60,7 @@ public class UITronUSDtLikeServerController(
         if (currentConfiguration is null)
             throw new InvalidOperationException();
         
-        var tronUSDtDefaultConfiguration = USDtPlugin.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
+        var tronUSDtDefaultConfiguration = USDtConfigurationProvider.GetTronUSDtLikeDefaultConfigurationItem(nbXplorerNetworkProvider, configuration);
         if (!ModelState.IsValid)
         {
             viewModel.DefaultSmartContractAddress = tronUSDtDefaultConfiguration.SmartContractAddress;
@@ -75,10 +75,10 @@ public class UITronUSDtLikeServerController(
             HttpHeaders = ParseHttpHeadersString(viewModel.HttpHeaders)
         };
 
-        await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
+        await settingsRepository.UpdateSetting(serverSettings, USDtConfigurationProvider.ServerSettingsKey(currentConfiguration));
 
         usdtPluginConfiguration.TronUSDtLikeConfigurationItems[currentConfiguration.GetPaymentMethodId()] =
-            await USDtPlugin.OverrideWithServerSettingsAsync(tronUSDtDefaultConfiguration, settingsRepository);
+            await USDtConfigurationProvider.OverrideWithServerSettingsAsync(tronUSDtDefaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new USDtSettingsChanged());
 
