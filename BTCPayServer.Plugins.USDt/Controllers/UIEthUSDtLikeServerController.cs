@@ -38,6 +38,7 @@ public class UIEthUSDtLikeServerController(
         var viewModel = new EthUSDtLikeServerConfigViewModel
         {
             DisplayName = evmConfiguration.DisplayName,
+            ChainDisplayName = evmConfiguration.Chain,
             DefaultSmartContractAddress = defaultConfiguration.SmartContractAddress,
             DefaultJsonRpcUri = defaultConfiguration.JsonRpcUri,
             SmartContractAddress = serverSettings?.SmartContractAddress,
@@ -57,6 +58,7 @@ public class UIEthUSDtLikeServerController(
         if (!ModelState.IsValid)
         {
             viewModel.DisplayName = currentConfiguration.DisplayName;
+            viewModel.ChainDisplayName = currentConfiguration.Chain;
             viewModel.DefaultSmartContractAddress = defaultConfiguration.SmartContractAddress;
             viewModel.DefaultJsonRpcUri = defaultConfiguration.JsonRpcUri;
             return View(viewModel);

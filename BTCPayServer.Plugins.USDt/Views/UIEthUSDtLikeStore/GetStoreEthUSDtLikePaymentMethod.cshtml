@@ -9,9 +9,9 @@
 
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on ETHEREUM payment settings", "EthStore");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), $"{Model.DisplayName} payment settings", "EthStore");
 }
-<h3 class="mb-3">USD₮ on ETHEREUM payment settings</h3>
+<h3 class="mb-3">@Model.DisplayName payment settings</h3>
 <div class="row">
     <div class="col-md-6">
         <div asp-validation-summary="All"></div>
@@ -32,14 +32,14 @@
 <div class="row">
     <div class="col-md-8">
         <p class="mb-0">
-            Configures the addresses used or payment by your customers. Each address is reserved for the time of payment and settlement, so we advise you to set several addresses.
+            Configures the @Model.ChainDisplayName addresses used for payment by your customers. Each address is reserved for the time of payment and settlement, so we advise you to set several addresses.
         </p>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")"
               class="mt-4" enctype="multipart/form-data">
             <div class="d-flex flex-wrap align-items-center gap-3">
-                <input asp-for="Address" type="text" class="form-control" placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e" style="flex: 1 1 14rem">
+                <input asp-for="Address" type="text" class="form-control" placeholder="@Model.AddressPlaceholder" style="flex: 1 1 14rem">
                 <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address(es)</button>
             </div>
             <div class="form-text">
@@ -97,7 +97,7 @@
                         <use xlink:href="#exclamation-triangle-fill"/>
                     </svg>
                     <div>
-                        Unable to retrieve balances for addresses. Please verify your node connection.
+                        Unable to retrieve balances for addresses. Please verify your @Model.ChainDisplayName node connection.
                     </div>
                 </div>
             }
@@ -115,10 +115,10 @@
         {
             <br/>
             <div class="alert alert-info">
-                Please add at least one address before using this payment method.
+                Please add at least one @Model.ChainDisplayName address before using this payment method.
             </div>
         }
-        <partial name="_Confirm" model="@(new ConfirmModel("Remove store user", "This action will prevent the user from accessing this store and its settings. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
+        <partial name="_Confirm" model="@(new ConfirmModel("Remove address", "This address will no longer be used for incoming payments. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")" class="mt-4" enctype="multipart/form-data">

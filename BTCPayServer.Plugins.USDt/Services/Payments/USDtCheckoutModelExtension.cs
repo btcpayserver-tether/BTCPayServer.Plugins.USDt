@@ -2,31 +2,31 @@ using System.Collections.Generic;
 using System.Linq;
 using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
-using BTCPayServer.Plugins.USDt.Configuration.Tron;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class TronUSDtCheckoutModelExtension(
-    TronUSDtLikeConfigurationItem configurationItem,
+public class USDtCheckoutModelExtension(
+    PaymentMethodId paymentMethodId,
+    string image,
+    string currencyDisplayName,
     IEnumerable<IPaymentLinkExtension> paymentLinkExtensions) : ICheckoutModelExtension
 {
     private readonly IPaymentLinkExtension _paymentLinkExtension =
-        paymentLinkExtensions.Single(p => p.PaymentMethodId == configurationItem.GetPaymentMethodId());
+        paymentLinkExtensions.Single(p => p.PaymentMethodId == paymentMethodId);
 
-    public PaymentMethodId PaymentMethodId { get; } = configurationItem.GetPaymentMethodId();
-    public string Image => configurationItem.CryptoImagePath;
+    public PaymentMethodId PaymentMethodId { get; } = paymentMethodId;
+    public string Image => image;
     public string Badge => "";
 
     public void ModifyCheckoutModel(CheckoutModelContext context)
     {
-        if (context is not { Handler: TronUSDtLikePaymentMethodHandler handler })
+        if (context.Handler?.PaymentMethodId != PaymentMethodId)
             return;
 
         context.Model.CheckoutBodyComponentName = BitcoinCheckoutModelExtension.CheckoutBodyComponentName;
-
         context.Model.InvoiceBitcoinUrl = _paymentLinkExtension.GetPaymentLink(context.Prompt, context.UrlHelper);
         context.Model.InvoiceBitcoinUrlQR = context.Model.InvoiceBitcoinUrl;
         context.Model.ShowPayInWalletButton = false;
-        context.Model.PaymentMethodCurrency = configurationItem.CurrencyDisplayName;
+        context.Model.PaymentMethodCurrency = currencyDisplayName;
     }
 }

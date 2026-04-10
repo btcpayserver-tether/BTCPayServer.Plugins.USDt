@@ -47,7 +47,7 @@
                         <a href="https://ethereum.org/en/developers/docs/apis/json-rpc/" target="_blank" rel="noreferrer noopener">
                             <vc:icon symbol="info"/>
                         </a>
-                    </small> of the node you wish to use for the connection with the Ethereum chain. By default, it uses a public node.
+                    </small> of the node you wish to use for the connection with the @Model.ChainDisplayName chain. By default, it uses a public node.
                 </div>
             </div>
             <h4>Advanced</h4>
@@ -66,7 +66,7 @@
                 <input asp-for="SmartContractAddress" type="text" class="form-control" placeholder="@ViewData.Model.DefaultSmartContractAddress" style="flex: 1 1 14rem">
                 <span asp-validation-for="SmartContractAddress" class="text-danger"></span>
                 <div class="form-text">
-                    Please provide the address of the USDT smart contract on Ethereum
+                    Please provide the address of the USDT smart contract on @Model.ChainDisplayName
                     <small>
                         <a href="https://tether.to/en/supported-protocols" target="_blank" rel="noreferrer noopener">
                             <vc:icon symbol="info"/>

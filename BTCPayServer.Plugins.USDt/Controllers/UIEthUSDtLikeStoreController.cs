@@ -72,15 +72,22 @@ public class UIEthUSDtLikeStoreController(
         var matchedPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EthUSDtPaymentMethodConfig>(paymentMethodId, handlers);
 
         if (matchedPaymentMethodConfig == null)
-            return View(StoreViewName(config.Chain), new EditEthUSDtPaymentMethodViewModel { Enabled = false });
+            return View(new EditEthUSDtPaymentMethodViewModel
+            {
+                DisplayName = config.DisplayName,
+                ChainDisplayName = config.Chain,
+                Enabled = false
+            });
 
         var balances =
             await EthUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
             await EthUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
-        return View(StoreViewName(config.Chain), new EditEthUSDtPaymentMethodViewModel
+        return View(new EditEthUSDtPaymentMethodViewModel
         {
+            DisplayName = config.DisplayName,
+            ChainDisplayName = config.Chain,
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
@@ -94,13 +101,6 @@ public class UIEthUSDtLikeStoreController(
                 }).ToArray()
         });
     }
-
-    private static string StoreViewName(string chain) => chain switch
-    {
-        Constants.PolygonChainName => "GetStorePolygonUSDtLikePaymentMethod",
-        Constants.AmoyChainName => "GetStorePolygonUSDtLikePaymentMethod",
-        _ => nameof(GetStoreEthUSDtLikePaymentMethod)
-    };
 
     [HttpPost("{paymentMethodId}/addresses/{address}/delete")]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]

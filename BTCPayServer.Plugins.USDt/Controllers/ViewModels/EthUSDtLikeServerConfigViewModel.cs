@@ -5,6 +5,7 @@ namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
 public class EthUSDtLikeServerConfigViewModel
 {
+    public required string ChainDisplayName { get; set; }
     // No checksum enforcement here; we normalize to lowercase elsewhere
     public string? SmartContractAddress { get; init; }
     public string? DefaultSmartContractAddress { get; set; }
