@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net.Http;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
