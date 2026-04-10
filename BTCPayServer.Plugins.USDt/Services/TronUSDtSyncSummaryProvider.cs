@@ -5,7 +5,7 @@ namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider) : USDtSyncSummaryProvider
 {
-    public string Partial => "TronUSDtLike/TronUSDtSyncSummary";
+    public override string Partial => "TronUSDtLike/TronUSDtSyncSummary";
 
     protected override IEnumerable<KeyValuePair<PaymentMethodId, USDtRpcSummary>> GetSummaries()
     {
