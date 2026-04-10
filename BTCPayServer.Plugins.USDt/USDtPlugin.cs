@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Abstractions.Services;
@@ -40,14 +41,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
     {
         var networkProvider = ((PluginServiceCollection)services).BootstrapServices.GetRequiredService<NBXplorerNetworkProvider>();
         var configuration = ((PluginServiceCollection)services).BootstrapServices.GetRequiredService<IConfiguration>();
-        var settingsRepository = services.BuildServiceProvider().GetService<ISettingsRepository>() ??
-                                 throw new InvalidOperationException("serviceProvider.GetService<ISettingsRepository>()");
 
         var tronUSDtConfiguration = GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
-        tronUSDtConfiguration = OverrideWithServerSettings(tronUSDtConfiguration, settingsRepository);
-
-        var evmUsdtConfigurations = GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration)
-            .ToDictionary(pair => pair.Key, pair => OverrideWithServerSettings(pair.Value, settingsRepository));
+        var evmUsdtConfigurations = GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration);
 
         var pluginConfiguration = new USDtPluginConfiguration
         {
@@ -59,6 +55,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
 
         services.AddSingleton(pluginConfiguration);
+        services.AddHostedService<USDtPluginConfigurationBootstrapper>();
 
         services.AddCurrencyData(new CurrencyData
         {
@@ -134,7 +131,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             typeof(EVMUSDtPaymentMethodHandler), configuration));
         services.AddSingleton<IPaymentLinkExtension>(provider =>
             (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EVMUSDtPaymentLinkExtension),
-                paymentMethodId, configuration.SmartContractAddress, configuration.Divisibility, configuration.ChainId));
+                paymentMethodId));
     }
 
     private static void RegisterCommonPaymentMethodServices(
@@ -221,9 +218,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    public static TronUSDtLikeConfigurationItem OverrideWithServerSettings(TronUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
+    public static async Task<TronUSDtLikeConfigurationItem> OverrideWithServerSettingsAsync(TronUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
     {
-        var serverSettings = settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
+        var serverSettings = await settingsRepository.GetSettingAsync<TronUSDtLikeServerSettings>(ServerSettingsKey(config));
 
         if (serverSettings == null)
             return config;
@@ -291,9 +288,9 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
     }
 
-    public static EVMUSDtLikeConfigurationItem OverrideWithServerSettings(EVMUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
+    public static async Task<EVMUSDtLikeConfigurationItem> OverrideWithServerSettingsAsync(EVMUSDtLikeConfigurationItem config, ISettingsRepository settingsRepository)
     {
-        var serverSettings = settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(ServerSettingsKey(config)).Result;
+        var serverSettings = await settingsRepository.GetSettingAsync<EVMUSDtLikeServerSettings>(ServerSettingsKey(config));
 
         if (serverSettings == null)
             return config;

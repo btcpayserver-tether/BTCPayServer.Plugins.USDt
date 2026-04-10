@@ -78,7 +78,7 @@ public class UITronUSDtLikeServerController(
         await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
 
         usdtPluginConfiguration.TronUSDtLikeConfigurationItems[currentConfiguration.GetPaymentMethodId()] =
-            USDtPlugin.OverrideWithServerSettings(tronUSDtDefaultConfiguration, settingsRepository);
+            await USDtPlugin.OverrideWithServerSettingsAsync(tronUSDtDefaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new USDtSettingsChanged());
 

@@ -73,7 +73,7 @@ public class UIEVMUSDtLikeServerController(
         await settingsRepository.UpdateSetting(serverSettings, USDtPlugin.ServerSettingsKey(currentConfiguration));
 
         usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId] =
-            USDtPlugin.OverrideWithServerSettings(defaultConfiguration, settingsRepository);
+            await USDtPlugin.OverrideWithServerSettingsAsync(defaultConfiguration, settingsRepository);
 
         eventAggregator.Publish(new USDtSettingsChanged());
 
