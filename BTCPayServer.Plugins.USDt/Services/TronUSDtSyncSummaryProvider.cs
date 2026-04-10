@@ -1,24 +1,14 @@
 using System.Collections.Generic;
-using System.Linq;
-using BTCPayServer.Abstractions.Contracts;
+using BTCPayServer.Payments;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider) : ISyncSummaryProvider
+public class TronUSDtSyncSummaryProvider(TronUSDtRPCProvider tronUSDtRpcProvider) : USDtSyncSummaryProvider
 {
-    public bool AllAvailable()
-    {
-        return tronUSDtRpcProvider.Summaries.All(pair => pair.Value.RpcAvailable);
-    }
-
     public string Partial => "TronUSDtLike/TronUSDtSyncSummary";
 
-    public IEnumerable<ISyncStatus> GetStatuses()
+    protected override IEnumerable<KeyValuePair<PaymentMethodId, USDtRpcSummary>> GetSummaries()
     {
-        return tronUSDtRpcProvider.Summaries.Select(pair => new TronUSDtSyncStatus
-        {
-            Summary = pair.Value,
-            PaymentMethodId = pair.Key.ToString()
-        });
+        return tronUSDtRpcProvider.Summaries;
     }
 }

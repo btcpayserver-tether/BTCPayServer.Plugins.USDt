@@ -43,7 +43,7 @@ public class TronUSDtRPCProvider
         LoadClientsFromConfiguration();
     }
 
-    public ConcurrentDictionary<PaymentMethodId, TronUSDtLikeSummary> Summaries { get; } = new();
+    public ConcurrentDictionary<PaymentMethodId, USDtRpcSummary> Summaries { get; } = new();
 
     private void LoadClientsFromConfiguration()
     {
@@ -83,7 +83,7 @@ public class TronUSDtRPCProvider
         return Summaries.ContainsKey(pmi) && IsAvailable(Summaries[pmi]);
     }
 
-    private static bool IsAvailable(TronUSDtLikeSummary summary)
+    private static bool IsAvailable(USDtRpcSummary summary)
     {
         return summary is { Synced: true, RpcAvailable: true };
     }
@@ -123,7 +123,7 @@ public class TronUSDtRPCProvider
             await _settingsRepository.GetSettingAsync<EVMBasedListenerState>(ListenerStateSettingKey(configuration));
         if (listenerState == null) return;
 
-        var summary = new TronUSDtLikeSummary();
+        var summary = new USDtRpcSummary();
         try
         {
             summary.LatestBlockScanned = listenerState.LastBlockHeight;
@@ -165,16 +165,5 @@ public class TronUSDtRPCProvider
     public static string ListenerStateSettingKey(TronUSDtLikeConfigurationItem config)
     {
         return $"{config.GetSettingPrefix()}_LISTENER_STATE";
-    }
-
-    public class TronUSDtLikeSummary
-    {
-        public bool Synced { get; set; }
-        public BigInteger LatestBlockOnNode { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public bool RpcAvailable { get; set; }
-        public BigInteger HighestBlockOnChain { get; set; }
-        public BigInteger LatestBlockScanned { get; set; }
-        public bool Syncing { get; set; }
     }
 }

@@ -42,7 +42,7 @@ public class EthUSDtRPCProvider
         LoadClientsFromConfiguration();
     }
 
-    public ConcurrentDictionary<PaymentMethodId, EthUSDtLikeSummary> Summaries { get; } = new();
+    public ConcurrentDictionary<PaymentMethodId, USDtRpcSummary> Summaries { get; } = new();
 
     private void LoadClientsFromConfiguration()
     {
@@ -72,7 +72,7 @@ public class EthUSDtRPCProvider
         return Summaries.ContainsKey(pmi) && IsAvailable(Summaries[pmi]);
     }
 
-    private static bool IsAvailable(EthUSDtLikeSummary summary)
+    private static bool IsAvailable(USDtRpcSummary summary)
     {
         return summary is { Synced: true, RpcAvailable: true };
     }
@@ -110,7 +110,7 @@ public class EthUSDtRPCProvider
             await _settingsRepository.GetSettingAsync<EVMBasedListenerState>(ListenerStateSettingKey(configuration));
         if (listenerState == null) return;
 
-        var summary = new EthUSDtLikeSummary();
+        var summary = new USDtRpcSummary();
         try
         {
             summary.LatestBlockScanned = listenerState.LastBlockHeight;
@@ -152,16 +152,5 @@ public class EthUSDtRPCProvider
     public static string ListenerStateSettingKey(EthUSDtLikeConfigurationItem config)
     {
         return $"{config.GetSettingPrefix()}_LISTENER_STATE";
-    }
-
-    public class EthUSDtLikeSummary
-    {
-        public bool Synced { get; set; }
-        public BigInteger LatestBlockOnNode { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public bool RpcAvailable { get; set; }
-        public BigInteger HighestBlockOnChain { get; set; }
-        public BigInteger LatestBlockScanned { get; set; }
-        public bool Syncing { get; set; }
     }
 }

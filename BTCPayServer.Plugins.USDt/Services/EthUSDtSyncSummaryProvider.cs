@@ -1,24 +1,14 @@
 using System.Collections.Generic;
-using System.Linq;
-using BTCPayServer.Abstractions.Contracts;
+using BTCPayServer.Payments;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class EthUSDtSyncSummaryProvider(EthUSDtRPCProvider rpcProvider) : ISyncSummaryProvider
+public class EthUSDtSyncSummaryProvider(EthUSDtRPCProvider rpcProvider) : USDtSyncSummaryProvider
 {
-    public bool AllAvailable()
-    {
-        return rpcProvider.Summaries.All(pair => pair.Value.RpcAvailable);
-    }
-
     public string Partial => "EthUSDtLike/EthUSDtSyncSummary";
 
-    public IEnumerable<ISyncStatus> GetStatuses()
+    protected override IEnumerable<KeyValuePair<PaymentMethodId, USDtRpcSummary>> GetSummaries()
     {
-        return rpcProvider.Summaries.Select(pair => new EthUSDtSyncStatus
-        {
-            Summary = pair.Value,
-            PaymentMethodId = pair.Key.ToString()
-        });
+        return rpcProvider.Summaries;
     }
 }
