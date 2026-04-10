@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Abstractions.Services;
@@ -45,11 +46,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         var tronUSDtConfiguration = GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
         tronUSDtConfiguration = OverrideWithServerSettings(tronUSDtConfiguration, settingsRepository);
 
-        var ethUsdtConfiguration = GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
-        ethUsdtConfiguration = OverrideWithServerSettings(ethUsdtConfiguration, settingsRepository);
-
-        var polygonUsdtConfiguration = GetPolygonUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
-        polygonUsdtConfiguration = OverrideWithServerSettings(polygonUsdtConfiguration, settingsRepository);
+        var evmUsdtConfigurations = GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration)
+            .ToDictionary(pair => pair.Key, pair => OverrideWithServerSettings(pair.Value, settingsRepository));
 
         var pluginConfiguration = new USDtPluginConfiguration
         {
@@ -57,11 +55,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
             {
                 { tronUSDtConfiguration.GetPaymentMethodId(), tronUSDtConfiguration }
             },
-            EVMUSDtLikeConfigurationItems = new Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem>
-            {
-                { ethUsdtConfiguration.GetPaymentMethodId(), ethUsdtConfiguration },
-                { polygonUsdtConfiguration.GetPaymentMethodId(), polygonUsdtConfiguration }
-            }
+            EVMUSDtLikeConfigurationItems = evmUsdtConfigurations
         };
 
         services.AddSingleton(pluginConfiguration);
@@ -76,7 +70,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         });
 
         var tronUSDtPaymentMethodId = tronUSDtConfiguration.GetPaymentMethodId();
-        services.AddTransactionLinkProvider(tronUSDtPaymentMethodId, new TronUSDtTransactionLinkProvider(tronUSDtConfiguration.BlockExplorerLink));
+        services.AddTransactionLinkProvider(tronUSDtPaymentMethodId, new USDtTransactionLinkProvider(tronUSDtConfiguration.BlockExplorerLink));
         services.AddSingleton<TronUSDtRPCProvider>();
         services.AddHostedService<TronUSDtLikeSummaryUpdaterHostedService>();
         services.AddHostedService<TronUSDtListener>();
@@ -88,8 +82,8 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddSingleton<IPaymentLinkExtension>(provider =>
             (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtPaymentLinkExtension), tronUSDtPaymentMethodId));
         services.AddSingleton(provider =>
-            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(TronUSDtCheckoutModelExtension),
-                tronUSDtConfiguration));
+            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(USDtCheckoutModelExtension),
+                tronUSDtPaymentMethodId, tronUSDtConfiguration.CryptoImagePath, tronUSDtConfiguration.CurrencyDisplayName));
         
         services.AddDefaultPrettyName(tronUSDtPaymentMethodId, tronUSDtConfiguration.DisplayName);
 
@@ -101,37 +95,28 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
         
-        // Ethereum USDt wiring
-        var ethPaymentMethodId = ethUsdtConfiguration.GetPaymentMethodId();
-        services.AddTransactionLinkProvider(ethPaymentMethodId, new EthUSDtTransactionLinkProvider(ethUsdtConfiguration.BlockExplorerLink));
         services.AddSingleton<EthUSDtRPCProvider>();
         services.AddHostedService<EthUSDtLikeSummaryUpdaterHostedService>();
         services.AddHostedService<EthUSDtListener>();
 
-        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentMethodHandler),
-            ethUsdtConfiguration));
-        services.AddSingleton<IPaymentLinkExtension>(provider =>
-            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), ethPaymentMethodId, ethUsdtConfiguration.SmartContractAddress, ethUsdtConfiguration.Divisibility, ethUsdtConfiguration.ChainId));
-        services.AddSingleton(provider =>
-            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtCheckoutModelExtension),
-                ethUsdtConfiguration));
+        foreach (var evmUsdtConfiguration in evmUsdtConfigurations.Values)
+        {
+            var paymentMethodId = evmUsdtConfiguration.GetPaymentMethodId();
+            services.AddTransactionLinkProvider(paymentMethodId,
+                new USDtTransactionLinkProvider(evmUsdtConfiguration.BlockExplorerLink));
 
-        services.AddDefaultPrettyName(ethPaymentMethodId, ethUsdtConfiguration.DisplayName);
+            services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider,
+                typeof(EthUSDtPaymentMethodHandler), evmUsdtConfiguration));
+            services.AddSingleton<IPaymentLinkExtension>(provider =>
+                (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension),
+                    paymentMethodId, evmUsdtConfiguration.SmartContractAddress, evmUsdtConfiguration.Divisibility,
+                    evmUsdtConfiguration.ChainId));
+            services.AddSingleton(provider =>
+                (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(USDtCheckoutModelExtension),
+                    paymentMethodId, evmUsdtConfiguration.CryptoImagePath, evmUsdtConfiguration.CurrencyDisplayName));
 
-        // Polygon USDt wiring — reuses the EVM-based hosted services (EthUSDtRPCProvider, EthUSDtListener, etc.)
-        // which iterate EVMUSDtLikeConfigurationItems and handle all EVM chains automatically.
-        var polygonPaymentMethodId = polygonUsdtConfiguration.GetPaymentMethodId();
-        services.AddTransactionLinkProvider(polygonPaymentMethodId, new EthUSDtTransactionLinkProvider(polygonUsdtConfiguration.BlockExplorerLink));
-
-        services.AddSingleton(provider => (IPaymentMethodHandler)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentMethodHandler),
-            polygonUsdtConfiguration));
-        services.AddSingleton<IPaymentLinkExtension>(provider =>
-            (IPaymentLinkExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtPaymentLinkExtension), polygonPaymentMethodId, polygonUsdtConfiguration.SmartContractAddress, polygonUsdtConfiguration.Divisibility, polygonUsdtConfiguration.ChainId));
-        services.AddSingleton(provider =>
-            (ICheckoutModelExtension)ActivatorUtilities.CreateInstance(provider, typeof(EthUSDtCheckoutModelExtension),
-                polygonUsdtConfiguration));
-
-        services.AddDefaultPrettyName(polygonPaymentMethodId, polygonUsdtConfiguration.DisplayName);
+            services.AddDefaultPrettyName(paymentMethodId, evmUsdtConfiguration.DisplayName);
+        }
 
         services.AddSingleton<ISyncSummaryProvider, EthUSDtSyncSummaryProvider>();
 
@@ -235,18 +220,28 @@ public class USDtPlugin : BaseBTCPayServerPlugin
     public static EthUSDtLikeConfigurationItem GetEVMUSDtDefaultConfigurationItem(
         PaymentMethodId paymentMethodId,
         NBXplorerNetworkProvider networkProvider,
-        IConfiguration configuration) =>
-        IsPolygonEvmChain(paymentMethodId)
-            ? GetPolygonUSDtLikeDefaultConfigurationItem(networkProvider, configuration)
-            : GetEthUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
-
-    private static bool IsPolygonEvmChain(PaymentMethodId paymentMethodId)
+        IConfiguration configuration)
     {
-        var pmi = paymentMethodId.ToString();
-        var dash = pmi.IndexOf('-');
-        var chain = dash >= 0 ? pmi[(dash + 1)..] : pmi;
-        return string.Equals(chain, Constants.PolygonChainName, StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(chain, Constants.AmoyChainName, StringComparison.OrdinalIgnoreCase);
+        if (GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration).TryGetValue(paymentMethodId,
+                out var config))
+            return config;
+
+        throw new NotSupportedException($"Unsupported EVM payment method id {paymentMethodId}");
+    }
+
+    public static Dictionary<PaymentMethodId, EthUSDtLikeConfigurationItem> GetEVMUSDtLikeDefaultConfigurationItems(
+        NBXplorerNetworkProvider networkProvider,
+        IConfiguration configuration)
+    {
+        return GetEVMUSDtHardcodedConfigs(networkProvider.NetworkType)
+            .Select(configItem => OverrideWithAppConfig(configItem, configuration))
+            .ToDictionary(configItem => configItem.GetPaymentMethodId());
+    }
+
+    private static IEnumerable<EthUSDtLikeConfigurationItem> GetEVMUSDtHardcodedConfigs(ChainName chainName)
+    {
+        yield return GetEthUSDtHardcodedConfig(chainName);
+        yield return GetPolygonUSDtHardcodedConfig(chainName);
     }
 
     public static EthUSDtLikeConfigurationItem GetEthUSDtLikeDefaultConfigurationItem(NBXplorerNetworkProvider networkProvider, IConfiguration configuration)
