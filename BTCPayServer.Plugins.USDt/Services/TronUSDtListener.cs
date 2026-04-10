@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -38,12 +37,6 @@ public class TronUSDtListener(
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService) : IHostedService
 {
-    public static readonly List<InvoiceStatus> StatusToTrack =
-    [
-        InvoiceStatus.New,
-        InvoiceStatus.Processing
-    ];
-
     private readonly CompositeDisposable _leases = new();
     private CancellationTokenSource? _cts;
 
@@ -52,7 +45,8 @@ public class TronUSDtListener(
         if (usdtPluginConfiguration.TronUSDtLikeConfigurationItems.Count == 0) return Task.CompletedTask;
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _ = LoopIndex(usdtPluginConfiguration.TronUSDtLikeConfigurationItems.Single().Value, _cts.Token);
+        foreach (var configurationItem in usdtPluginConfiguration.TronUSDtLikeConfigurationItems.Values)
+            _ = LoopIndex(configurationItem, _cts.Token);
         return Task.CompletedTask;
     }
 
@@ -95,8 +89,8 @@ public class TronUSDtListener(
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if ((await invoiceRepository.GetMonitoredInvoices(pmi, true, stoppingToken)).Any(i =>
-                            StatusToTrack.Any(s => s == i.Status)) ==
+                        if ((await invoiceRepository.GetMonitoredInvoices(pmi, true, stoppingToken)).Any(i =>
+                            USDtListenerShared.StatusToTrack.Contains(i.Status)) ==
                         false)
                     {
                         var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
@@ -107,7 +101,7 @@ public class TronUSDtListener(
                             listenerState.LastBlockHeight = lastBlockNumber;
                         }
 
-                        Thread.Sleep(30_000);
+                        await Task.Delay(30_000, stoppingToken);
                     }
                     else
                     {
@@ -117,7 +111,7 @@ public class TronUSDtListener(
 
                         if (block != null)
                         {
-                            await OnNewBlockToIndex(pmi, block);
+                            await OnNewBlockToIndex(pmi, block, stoppingToken);
                             logger.LogInformation("New block indexed {BlockNumber}", block.Number);
 
                             listenerState.LastBlockHeight = block.Number.Value;
@@ -126,7 +120,7 @@ public class TronUSDtListener(
                         {
                             logger.LogInformation("Block not present on node yet {BlockNumber}",
                                 listenerState.LastBlockHeight);
-                            Thread.Sleep(1_000);
+                            await Task.Delay(1_000, stoppingToken);
                         }
                     }
 
@@ -137,19 +131,19 @@ public class TronUSDtListener(
             catch (RpcClientTimeoutException)
             {
                 logger.LogWarning("Timeout while indexing, is the node running? Retrying in 10 seconds");
-                Thread.Sleep(5_000);
+                await Task.Delay(5_000, stoppingToken);
             }
             catch (RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") ==
                                                       true)
             {
                 logger.LogWarning(
                     "Rate limit exceeded while indexing, use a Tron node with higher limits if possible. Retrying in 10 seconds");
-                Thread.Sleep(10_000);
+                await Task.Delay(10_000, stoppingToken);
             }
             catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while indexing");
-                Thread.Sleep(10_000);
+                await Task.Delay(10_000, stoppingToken);
             }
     }
 
@@ -179,7 +173,8 @@ public class TronUSDtListener(
         return usdtPluginConfiguration.TronUSDtLikeConfigurationItems[pmi];
     }
 
-    private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block)
+    private async Task UpdatePaymentStates(PaymentMethodId pmi, InvoiceEntity[] invoices, BlockWithTransactions block,
+        CancellationToken stoppingToken)
     {
         if (invoices.Length == 0) return;
 
@@ -212,7 +207,7 @@ public class TronUSDtListener(
             if (changes != null && changes.Count != 0)
                 break;
 
-            Thread.Sleep(250);
+            await Task.Delay(250, stoppingToken);
         } while (tries++ < 3);
 
         if (changes == null)
@@ -235,13 +230,14 @@ public class TronUSDtListener(
                 invoice);
         }
 
-        var updatedPaymentEntities =
-            new BlockingCollection<(PaymentEntity Payment, InvoiceEntity invoice)>();
+        var updatedPaymentEntities = new List<(PaymentEntity Payment, InvoiceEntity invoice)>();
         foreach (var invoice in invoices)
-        foreach (var payment in GetPendingTronUSDtLikePayments(invoice, pmi))
+        foreach (var payment in GetPendingPayments(invoice, pmi))
         {
             var paymentData = handler.ParsePaymentDetails(payment.Details);
-            paymentData.ConfirmationCount = (int)(block.Number.Value - paymentData.BlockHeight);
+            var confDiff = block.Number.Value - paymentData.BlockHeight;
+            var confs = confDiff < 0 ? 0 : (long)confDiff;
+            paymentData.ConfirmationCount = confs > int.MaxValue ? int.MaxValue : (int)confs;
 
             payment.Status = paymentData.PaymentConfirmed(invoice.SpeedPolicy)
                 ? PaymentStatus.Settled
@@ -257,9 +253,10 @@ public class TronUSDtListener(
                 eventAggregator.Publish(new InvoiceNeedUpdateEvent(valueTuples.Key.Id));
     }
 
-    private async Task OnNewBlockToIndex(PaymentMethodId pmi, BlockWithTransactions block)
+    private async Task OnNewBlockToIndex(PaymentMethodId pmi, BlockWithTransactions block,
+        CancellationToken stoppingToken)
     {
-        await UpdateAnyPendingTronUSDtLikePayment(pmi, block);
+        await UpdateAnyPendingPayment(pmi, block, stoppingToken);
     }
 
     private async Task HandlePaymentData(
@@ -300,20 +297,21 @@ public class TronUSDtListener(
     }
 
 
-    private async Task UpdateAnyPendingTronUSDtLikePayment(PaymentMethodId pmi, BlockWithTransactions block)
+    private async Task UpdateAnyPendingPayment(PaymentMethodId pmi, BlockWithTransactions block,
+        CancellationToken stoppingToken)
     {
         var invoices = (await invoiceRepository.GetMonitoredInvoices(pmi, true))
-            .Where(i => StatusToTrack.Contains(i.Status))
+            .Where(i => USDtListenerShared.StatusToTrack.Contains(i.Status))
             .Where(i => i.GetPaymentPrompt(pmi)?.Activated is true)
             .ToArray();
 
         if (invoices.Length == 0)
             return;
 
-        await UpdatePaymentStates(pmi, invoices, block);
+        await UpdatePaymentStates(pmi, invoices, block, stoppingToken);
     }
 
-    private static IEnumerable<PaymentEntity> GetPendingTronUSDtLikePayments(InvoiceEntity invoice, PaymentMethodId pmi)
+    private static IEnumerable<PaymentEntity> GetPendingPayments(InvoiceEntity invoice, PaymentMethodId pmi)
     {
         return invoice.GetPayments(false)
             .Where(p => p.PaymentMethodId == pmi)
