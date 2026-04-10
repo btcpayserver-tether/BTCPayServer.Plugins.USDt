@@ -3,7 +3,7 @@ using BTCPayServer.Validation;
 
 namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
-public class EthUSDtLikeServerConfigViewModel
+public class EVMUSDtLikeServerConfigViewModel
 {
     public required string ChainDisplayName { get; set; }
     // No checksum enforcement here; we normalize to lowercase elsewhere

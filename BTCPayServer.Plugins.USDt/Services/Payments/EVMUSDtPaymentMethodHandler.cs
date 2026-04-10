@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
-using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using Newtonsoft.Json;
@@ -10,9 +10,9 @@ using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class EthUSDtPaymentMethodHandler(
-    EthUSDtLikeConfigurationItem configurationItem,
-    EthUSDtRPCProvider rpcProvider,
+public class EVMUSDtPaymentMethodHandler(
+    EVMUSDtLikeConfigurationItem configurationItem,
+    EVMUSDtRPCProvider rpcProvider,
     CurrencyNameTable currencyNameTable,
     InvoiceRepository invoiceRepository) : IPaymentMethodHandler
 {
@@ -33,11 +33,11 @@ public class EthUSDtPaymentMethodHandler(
         if (!rpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
-        var details = new EthUSDtLikeOnChainPaymentMethodDetails();
+        var details = new EVMUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
                                throw new PaymentMethodUnavailableException(
-                                   "All your Ethereum addresses are currently waiting payment");
+                                   $"All your {configurationItem.Chain} addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0;
         context.Prompt.Details = JObject.FromObject(details, Serializer);
@@ -58,20 +58,20 @@ public class EthUSDtPaymentMethodHandler(
         return ParsePaymentDetails(details);
     }
 
-    private EthUSDtPaymentMethodConfig ParsePaymentMethodConfig(JToken config)
+    private EVMUSDtPaymentMethodConfig ParsePaymentMethodConfig(JToken config)
     {
-        return config.ToObject<EthUSDtPaymentMethodConfig>(Serializer) ??
-               throw new FormatException($"Invalid {nameof(EthUSDtPaymentMethodHandler)}");
+        return config.ToObject<EVMUSDtPaymentMethodConfig>(Serializer) ??
+               throw new FormatException($"Invalid {nameof(EVMUSDtPaymentMethodHandler)}");
     }
 
-    public EthUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
+    public EVMUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
     {
-        return details.ToObject<EthUSDtLikeOnChainPaymentMethodDetails>(Serializer);
+        return details.ToObject<EVMUSDtLikeOnChainPaymentMethodDetails>(Serializer);
     }
 
-    public EthUSDtPaymentData ParsePaymentDetails(JToken details)
+    public EVMUSDtPaymentData ParsePaymentDetails(JToken details)
     {
-        return details.ToObject<EthUSDtPaymentData>(Serializer) ??
-               throw new FormatException($"Invalid {nameof(EthUSDtPaymentMethodHandler)}");
+        return details.ToObject<EVMUSDtPaymentData>(Serializer) ??
+               throw new FormatException($"Invalid {nameof(EVMUSDtPaymentMethodHandler)}");
     }
 }

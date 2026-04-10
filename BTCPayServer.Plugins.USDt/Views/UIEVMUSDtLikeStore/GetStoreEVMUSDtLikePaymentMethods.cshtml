@@ -6,10 +6,10 @@
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.ViewUSDtStoreOptionsViewModel;
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on ETHEREUM payment settings", "EthStore");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on EVM payment settings", "EVMStore");
 }
 
-<h3 class="mb-3">USD₮ on ETHEREUM payment settings</h3>
+<h3 class="mb-3">USD₮ on EVM payment settings</h3>
 <div class="row">
     <div class="col-md-6">
         <div asp-validation-summary="All"></div>
@@ -52,7 +52,7 @@
                             }
                         </td>
                         <td class="text-right">
-                            <a id="Modify@(item.DisplayName)" asp-action="GetStoreEthUSDtLikePaymentMethod"
+                                     <a id="Modify@(item.DisplayName)" asp-action="GetStoreEVMUSDtLikePaymentMethod"
                                asp-route-storeId="@Context.GetRouteValue("storeId")"
                                asp-route-paymentMethodId="@item.PaymentMethodId">
                                 Modify

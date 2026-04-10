@@ -2,7 +2,7 @@ using BTCPayServer.Plugins.USDt.Configuration;
 
 namespace BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 
-public class EditEthUSDtPaymentMethodViewModel
+public class EditEVMUSDtPaymentMethodViewModel
 {
     public required string DisplayName { get; init; }
     public required string ChainDisplayName { get; init; }
@@ -10,9 +10,9 @@ public class EditEthUSDtPaymentMethodViewModel
     public string? Address { get; init; }
     public bool Enabled { get; init; }
 
-    public EditEthUSDtPaymentMethodAddressViewModel[] Addresses { get; init; } = [];
+    public EditEVMUSDtPaymentMethodAddressViewModel[] Addresses { get; init; } = [];
 
-    public class EditEthUSDtPaymentMethodAddressViewModel
+    public class EditEVMUSDtPaymentMethodAddressViewModel
     {
         public required string Value { get; init; }
         public bool Available { get; init; }

@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
-using BTCPayServer.Plugins.USDt.Configuration.Ethereum;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Services;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class EthUSDtRPCProvider : USDtRPCProvider<EthUSDtLikeConfigurationItem>
+public class EVMUSDtRPCProvider : USDtRPCProvider<EVMUSDtLikeConfigurationItem>
 {
     private readonly USDtPluginConfiguration _usdtPluginConfiguration;
 
-    public EthUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
+    public EVMUSDtRPCProvider(USDtPluginConfiguration usdtPluginConfiguration,
         EventAggregator eventAggregator,
         SettingsRepository settingsRepository,
         IHttpClientFactory httpClientFactory)
@@ -20,17 +20,17 @@ public class EthUSDtRPCProvider : USDtRPCProvider<EthUSDtLikeConfigurationItem>
         Initialize();
     }
 
-    protected override IReadOnlyDictionary<PaymentMethodId, EthUSDtLikeConfigurationItem> GetConfigurations()
+    protected override IReadOnlyDictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetConfigurations()
     {
         return _usdtPluginConfiguration.EVMUSDtLikeConfigurationItems;
     }
 
-    public static string ListenerStateSettingKey(EthUSDtLikeConfigurationItem config)
+    public static string ListenerStateSettingKey(EVMUSDtLikeConfigurationItem config)
     {
         return $"{config.GetSettingPrefix()}_LISTENER_STATE";
     }
 
-    protected override string GetListenerStateSettingKey(EthUSDtLikeConfigurationItem config)
+    protected override string GetListenerStateSettingKey(EVMUSDtLikeConfigurationItem config)
     {
         return ListenerStateSettingKey(config);
     }

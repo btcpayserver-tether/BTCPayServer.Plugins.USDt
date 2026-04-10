@@ -4,8 +4,8 @@ using BTCPayServer.Plugins.USDt.Configuration;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class EthUSDtLikeSummaryUpdaterHostedService(
-    EthUSDtRPCProvider rpcProvider,
+public class EVMUSDtLikeSummaryUpdaterHostedService(
+    EVMUSDtRPCProvider rpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
     Logs logs)
     : USDtSummaryUpdaterHostedService(logs)
@@ -25,5 +25,5 @@ public class EthUSDtLikeSummaryUpdaterHostedService(
         return rpcProvider.IsAvailable(paymentMethodId);
     }
 
-    protected override string DaemonName => "Ethereum USDTLike";
+    protected override string DaemonName => "EVM USDTLike";
 }

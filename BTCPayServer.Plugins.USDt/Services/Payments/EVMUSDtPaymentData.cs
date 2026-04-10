@@ -1,3 +1,3 @@
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
-public class EthUSDtPaymentData : USDtPaymentData;
+public class EVMUSDtPaymentData : USDtPaymentData;
