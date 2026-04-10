@@ -80,7 +80,7 @@ public class UITronUSDtLikeServerController(
         usdtPluginConfiguration.TronUSDtLikeConfigurationItems[currentConfiguration.GetPaymentMethodId()] =
             USDtPlugin.OverrideWithServerSettings(tronUSDtDefaultConfiguration, settingsRepository);
 
-        eventAggregator.Publish(new TronUSDtSettingsChanged());
+        eventAggregator.Publish(new USDtSettingsChanged());
 
         return RedirectToAction("GetServerConfig");
     }

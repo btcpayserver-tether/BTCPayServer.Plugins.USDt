@@ -2,7 +2,7 @@ using System;
 
 namespace BTCPayServer.Plugins.USDt.Configuration.Ethereum;
 
-public record EthUSDtLikeConfigurationItem(string Chain) : USDtPluginConfigurationItem
+public record EthUSDtLikeConfigurationItem(string Chain) : USDtPluginConfigurationItem, IUSDtRpcConfigurationItem
 {
     public required Uri JsonRpcUri { get; init; }
     public required string SmartContractAddress { get; init; }
