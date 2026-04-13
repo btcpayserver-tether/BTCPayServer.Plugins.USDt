@@ -1,4 +1,5 @@
 using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using Xunit;
 using Xunit.Abstractions;
@@ -21,5 +22,64 @@ public class FastTests : UnitTestBase
         Assert.True(TronUSDtAddressHelper.IsValid("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG2XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG3xXyExBkPp9nzdajDZsozEu4BkaSJozs"));
+    }
+
+    [Fact]
+    public void TronPaymentLinkIncludesAmountByDefault()
+    {
+        var result = TronUSDtPaymentLinkExtension.BuildPaymentLink(
+            "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs",
+            12.34m,
+            false);
+
+        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
+    }
+
+    [Fact]
+    public void TronPaymentLinkCanExcludeAmount()
+    {
+        var result = TronUSDtPaymentLinkExtension.BuildPaymentLink(
+            "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs",
+            12.34m,
+            true);
+
+        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs", result);
+    }
+
+    [Fact]
+    public void TronPaymentLinkReturnsNullWithoutDestination()
+    {
+        Assert.Null(TronUSDtPaymentLinkExtension.BuildPaymentLink(null, 12.34m, false));
+        Assert.Null(TronUSDtPaymentLinkExtension.BuildPaymentLink(string.Empty, 12.34m, false));
+    }
+
+    [Fact]
+    public void EvmPaymentLinkUsesBaseUnitsAndLowercasesAddresses()
+    {
+        var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            "0xdAC17F958D2ee523A2206206994597C13D831ec7",
+            1,
+            6,
+            12.3456789m);
+
+        Assert.Equal(
+            "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7@1/transfer?address=0x742d35cc6634c0532925a3b844bc454e4438f44e&uint256=12345678",
+            result);
+    }
+
+    [Fact]
+    public void EvmPaymentLinkClampsNegativeAmountsToZero()
+    {
+        var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            "0xdAC17F958D2ee523A2206206994597C13D831ec7",
+            1,
+            6,
+            -1m);
+
+        Assert.Equal(
+            "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7@1/transfer?address=0x742d35cc6634c0532925a3b844bc454e4438f44e&uint256=0",
+            result);
     }
 }

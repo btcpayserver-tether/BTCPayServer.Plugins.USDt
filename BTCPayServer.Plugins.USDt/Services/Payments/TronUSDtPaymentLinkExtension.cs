@@ -12,14 +12,20 @@ public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId) : IPa
 
     public string? GetPaymentLink(PaymentPrompt prompt, IUrlHelper? urlHelper)
     {
-        var excludeAmount = prompt.Details?.Value<bool?>("ExcludeAmountFromPaymentLink") ?? false;
-        
+        return BuildPaymentLink(
+            prompt.Destination,
+            prompt.Calculate().Due,
+            prompt.Details?.Value<bool?>("ExcludeAmountFromPaymentLink") ?? false);
+    }
+
+    internal static string? BuildPaymentLink(string? destination, decimal due, bool excludeAmount)
+    {
+        if (string.IsNullOrEmpty(destination))
+            return null;
+
         if (excludeAmount)
-        {
-            return prompt.Destination;
-        }
-        
-        var due = prompt.Calculate().Due;
-        return $"{prompt.Destination}?amount={due.ToString(CultureInfo.InvariantCulture)}";
+            return destination;
+
+        return $"{destination}?amount={due.ToString(CultureInfo.InvariantCulture)}";
     }
 }

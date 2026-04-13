@@ -200,8 +200,8 @@ public class UITronUSDtLikeStoreController(
             {
                 currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = viewModel.ExcludeAmountFromPaymentLink;
                 messages.Add(viewModel.ExcludeAmountFromPaymentLink 
-                    ? "QR code will now exclude the amount parameter" 
-                    : "QR code will now include the amount parameter");
+                    ? "Payment link QR codes will now exclude the amount parameter" 
+                    : "Payment link QR codes will now include the amount parameter");
             }
 
             if (messages.Count > 0)
