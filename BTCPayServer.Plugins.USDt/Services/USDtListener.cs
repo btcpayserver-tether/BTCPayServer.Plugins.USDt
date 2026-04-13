@@ -223,7 +223,8 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         var invoicesPerAddress = invoices
             .Select(invoice => (Invoice: invoice, Destination: invoice.GetPaymentPrompt(paymentMethodId)?.Destination))
             .Where(tuple => !string.IsNullOrEmpty(tuple.Destination))
-            .ToDictionary(tuple => NormalizeDestinationKey(tuple.Destination!), tuple => tuple.Invoice);
+            .GroupBy(tuple => NormalizeDestinationKey(tuple.Destination!))
+            .ToDictionary(group => group.Key, group => group.First().Invoice);
 
         var matches = await GetTransfersAsync(paymentMethodId, block, invoicesPerAddress, stoppingToken);
         foreach (var match in matches)

@@ -1,4 +1,5 @@
 using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using BTCPayServer.Client.Models;
@@ -92,6 +93,17 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public void EvmPaymentLinkReturnsNullWhenSmartContractIsUnset()
+    {
+        Assert.Null(EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            EVMUSDtLikeConfigurationItem.UnconfiguredSmartContractAddress,
+            80002,
+            6,
+            1m));
+    }
+
+    [Fact]
     public void EvmPaymentLinkTruncatesFractionalBaseUnits()
     {
         var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
@@ -140,5 +152,28 @@ public class FastTests : UnitTestBase
 
         paymentData.ConfirmationCount = 20;
         Assert.True(paymentData.PaymentConfirmed(SpeedPolicy.LowSpeed));
+    }
+
+    [Fact]
+    public void EvmConfigurationDetectsUnsetSmartContractAddress()
+    {
+        var invalidConfig = new EVMUSDtLikeConfigurationItem("Amoy")
+        {
+            JsonRpcUri = new Uri("https://rpc-amoy.polygon.technology/"),
+            SmartContractAddress = EVMUSDtLikeConfigurationItem.UnconfiguredSmartContractAddress,
+            Currency = "USDt",
+            DisplayName = "USDt on Amoy",
+            Divisibility = 6,
+            CryptoImagePath = "icon",
+            BlockExplorerLink = "https://amoy.polygonscan.com/tx/{0}",
+            DefaultRateRules = [],
+            CurrencyDisplayName = "USD₮",
+            ChainId = 80002
+        };
+
+        var validConfig = invalidConfig with { SmartContractAddress = "0x1234567890123456789012345678901234567890" };
+
+        Assert.False(invalidConfig.HasValidSmartContractAddress());
+        Assert.True(validConfig.HasValidSmartContractAddress());
     }
 }

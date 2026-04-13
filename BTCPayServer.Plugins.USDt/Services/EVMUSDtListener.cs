@@ -41,7 +41,9 @@ public class EVMUSDtListener(
 
     protected override IReadOnlyDictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetConfigurations()
     {
-        return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems;
+        return usdtPluginConfiguration.EVMUSDtLikeConfigurationItems
+            .Where(pair => pair.Value.HasValidSmartContractAddress())
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
     protected override string GetListenerStateSettingKey(EVMUSDtLikeConfigurationItem config)
@@ -65,6 +67,9 @@ public class EVMUSDtListener(
         CancellationToken stoppingToken)
     {
         var configuration = usdtPluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId];
+        if (!configuration.HasValidSmartContractAddress())
+            return [];
+
         var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
         var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(configuration.SmartContractAddress.ToLowerInvariant());
 

@@ -4,6 +4,8 @@ namespace BTCPayServer.Plugins.USDt.Configuration.EVM;
 
 public record EVMUSDtLikeConfigurationItem(string Chain) : USDtPluginConfigurationItem, IUSDtRpcConfigurationItem
 {
+    public const string UnconfiguredSmartContractAddress = "0x0000000000000000000000000000000000000000";
+
     public required Uri JsonRpcUri { get; init; }
     public required string SmartContractAddress { get; init; }
     public override string Chain { get; } = Chain;
@@ -26,4 +28,10 @@ public record EVMUSDtLikeConfigurationItem(string Chain) : USDtPluginConfigurati
     /// Ethereum mainnet = 1, Polygon = 137.
     /// </summary>
     public int ChainId { get; init; } = 1;
+
+    public bool HasValidSmartContractAddress()
+    {
+        return !string.IsNullOrWhiteSpace(SmartContractAddress) &&
+               !string.Equals(SmartContractAddress, UnconfiguredSmartContractAddress, StringComparison.OrdinalIgnoreCase);
+    }
 }

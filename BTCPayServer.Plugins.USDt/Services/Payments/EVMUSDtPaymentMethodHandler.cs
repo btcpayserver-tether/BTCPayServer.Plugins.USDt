@@ -33,6 +33,10 @@ public class EVMUSDtPaymentMethodHandler(
         if (!rpcProvider.IsAvailable(configurationItem.GetPaymentMethodId()))
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
+        if (!configurationItem.HasValidSmartContractAddress())
+            throw new PaymentMethodUnavailableException(
+                $"{configurationItem.DisplayName} is not configured with a smart contract address yet");
+
         var details = new EVMUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??

@@ -30,7 +30,10 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
         int divisibility,
         decimal due)
     {
-        if (string.IsNullOrEmpty(destination))
+        if (string.IsNullOrEmpty(destination) ||
+            string.IsNullOrWhiteSpace(smartContractAddress) ||
+            string.Equals(smartContractAddress, EVMUSDtLikeConfigurationItem.UnconfiguredSmartContractAddress,
+                StringComparison.OrdinalIgnoreCase))
             return null;
 
         var to = destination.ToLowerInvariant();
