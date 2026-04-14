@@ -176,4 +176,63 @@ public class FastTests : UnitTestBase
         Assert.False(invalidConfig.HasValidSmartContractAddress());
         Assert.True(validConfig.HasValidSmartContractAddress());
     }
+
+    [Fact]
+    public void EvmListenerBatchesDestinationFiltersToReduceRpcFanOut()
+    {
+        var destinationKeys = Enumerable.Range(0, 45)
+            .Select(i => $"0x{i:X40}")
+            .ToArray();
+
+        var batches = EVMUSDtListener.BatchDestinationAddresses(destinationKeys, 20);
+
+        Assert.Equal(3, batches.Count);
+        Assert.Equal(20, batches[0].Length);
+        Assert.Equal(20, batches[1].Length);
+        Assert.Equal(5, batches[2].Length);
+        Assert.All(batches.SelectMany(batch => batch), address => Assert.Equal(address.ToLowerInvariant(), address));
+    }
+
+    [Fact]
+    public void EvmListenerTransferPipelineFiltersAndNormalizesTrackedTransfers()
+    {
+        var trackedAddresses = new[]
+        {
+            "0x742d35cc6634c0532925a3b844bc454e4438f44e",
+            "0x1111111111111111111111111111111111111111"
+        };
+
+        var matches = EVMUSDtListener.ToTransferMatchSnapshots(
+            [
+                new EVMUSDtListener.TransferLogSnapshot(
+                    "0x742D35Cc6634C0532925a3b844Bc454e4438f44E",
+                    "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    123,
+                    "0xabc",
+                    "1",
+                    false),
+                new EVMUSDtListener.TransferLogSnapshot(
+                    "0x9999999999999999999999999999999999999999",
+                    "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    456,
+                    "0xdef",
+                    "2",
+                    false),
+                new EVMUSDtListener.TransferLogSnapshot(
+                    "0x1111111111111111111111111111111111111111",
+                    "0xcccccccccccccccccccccccccccccccccccccccc",
+                    789,
+                    "0xghi",
+                    "3",
+                    true)
+            ],
+            trackedAddresses);
+
+        var match = Assert.Single(matches);
+        Assert.Equal(trackedAddresses[0], match.DestinationKey);
+        Assert.Equal("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", match.From);
+        Assert.Equal("0x742D35Cc6634C0532925a3b844Bc454e4438f44E", match.To);
+        Assert.Equal(new BigInteger(123), match.TotalAmount);
+        Assert.Equal("abc-1", match.TransactionId);
+    }
 }

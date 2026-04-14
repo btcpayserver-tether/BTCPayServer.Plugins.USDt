@@ -37,6 +37,8 @@ public class EVMUSDtListener(
         handlers,
         paymentService)
 {
+    internal const int DestinationFilterBatchSize = 20;
+
     private readonly ILogger<EVMUSDtListener> _logger = logger;
 
     protected override IReadOnlyDictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetConfigurations()
@@ -72,20 +74,17 @@ public class EVMUSDtListener(
 
         var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
         var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(configuration.SmartContractAddress.ToLowerInvariant());
-
-        var toAddresses = invoicesPerAddress.Keys.ToArray();
         List<EventLog<TransferEventDTO>> changes = [];
+        var destinationBatches = BatchDestinationAddresses(invoicesPerAddress.Keys);
         var tries = 0;
         do
         {
             changes.Clear();
-            const int batchSize = 1;
-            for (var i = 0; i < toAddresses.Length; i += batchSize)
+            foreach (var destinationBatch in destinationBatches)
             {
-                var toAddress = toAddresses[i];
                 var filter = transferEvent.CreateFilterInput(
                     (object?)null,
-                    (object)toAddress,
+                    (object)destinationBatch,
                     new BlockParameter(block.Number),
                     new BlockParameter(block.Number));
                 var part = await transferEvent.GetAllChangesAsync(filter);
@@ -99,17 +98,74 @@ public class EVMUSDtListener(
             await Task.Delay(250, stoppingToken);
         } while (tries++ < 3);
 
-        return changes
-            .Where(t => !t.Log.Removed)
-            .Select(t => new USDtTransferMatch(
-                t.Event.To.ToLowerInvariant(),
-                t.Event.From,
-                t.Event.To,
-                t.Event.Value,
-                $"{t.Log.TransactionHash.Replace("0x", "")}-{t.Log.TransactionIndex}"))
-            .Where(match => invoicesPerAddress.ContainsKey(match.DestinationKey))
+        return ToTransferMatchSnapshots(
+                changes.Select(change => new TransferLogSnapshot(
+                    change.Event.To,
+                    change.Event.From,
+                    change.Event.Value,
+                    change.Log.TransactionHash,
+                    change.Log.TransactionIndex?.ToString() ?? string.Empty,
+                    change.Log.Removed)),
+                invoicesPerAddress.Keys)
+            .Select(match => new USDtTransferMatch(
+                match.DestinationKey,
+                match.From,
+                match.To,
+                match.TotalAmount,
+                match.TransactionId))
             .ToArray();
     }
+
+    internal static IReadOnlyList<string[]> BatchDestinationAddresses(
+        IEnumerable<string> destinationKeys,
+        int batchSize = DestinationFilterBatchSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+
+        return destinationKeys
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .Select(address => address.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .Chunk(batchSize)
+            .ToArray();
+    }
+
+    internal static IReadOnlyCollection<TransferMatchSnapshot> ToTransferMatchSnapshots(
+        IEnumerable<TransferLogSnapshot> changes,
+        IEnumerable<string> destinationKeys)
+    {
+        var destinationKeySet = destinationKeys
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .Select(address => address.ToLowerInvariant())
+            .ToHashSet(StringComparer.Ordinal);
+
+        return changes
+            .Where(change => !change.Removed)
+            .Select(change => new TransferMatchSnapshot(
+                change.To.ToLowerInvariant(),
+                change.From,
+                change.To,
+                change.Value,
+                $"{change.TransactionHash.Replace("0x", "")}-{change.TransactionIndex}"))
+            .Where(match => destinationKeySet.Contains(match.DestinationKey))
+            .DistinctBy(match => match.TransactionId)
+            .ToArray();
+    }
+
+    internal sealed record TransferLogSnapshot(
+        string To,
+        string From,
+        BigInteger Value,
+        string TransactionHash,
+        string TransactionIndex,
+        bool Removed);
+
+    internal sealed record TransferMatchSnapshot(
+        string DestinationKey,
+        string From,
+        string To,
+        BigInteger TotalAmount,
+        string TransactionId);
 
     protected override EVMUSDtPaymentData CreatePaymentDetails(
         string from,

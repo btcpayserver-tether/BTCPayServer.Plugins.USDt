@@ -322,7 +322,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         BlockWithTransactions block,
         CancellationToken stoppingToken)
     {
-        var invoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true))
+        var invoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true, stoppingToken))
             .Where(i => USDtListenerShared.StatusToTrack.Contains(i.Status))
             .Where(i => i.GetPaymentPrompt(paymentMethodId)?.Activated is true)
             .ToArray();
