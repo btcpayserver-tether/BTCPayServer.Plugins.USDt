@@ -1,7 +1,9 @@
+using System;
 using System.Globalization;
 using System.Numerics;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
+using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Services.Invoices;
 using Microsoft.AspNetCore.Mvc;
 
