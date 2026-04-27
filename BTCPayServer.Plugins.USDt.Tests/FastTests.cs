@@ -1,3 +1,4 @@
+using System.Numerics;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Services.Payments;
