@@ -12,7 +12,7 @@ public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId) : IPa
 
     public string? GetPaymentLink(PaymentPrompt prompt, IUrlHelper? urlHelper)
     {
-        var excludeAmount = prompt.Details?.Value<bool?>("ExcludeAmountFromPaymentLink") ?? false;
+        var excludeAmount = prompt.Details?.Value<bool?>("excludeAmountFromPaymentLink") ?? false;
         
         if (excludeAmount)
         {
