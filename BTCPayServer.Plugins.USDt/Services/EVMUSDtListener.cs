@@ -83,7 +83,7 @@ public class EVMUSDtListener(
             foreach (var destinationBatch in destinationBatches)
             {
                 var filter = transferEvent.CreateFilterInput(
-                    (object?)null,
+                    (object[]?)null,
                     (object[])destinationBatch,
                     new BlockParameter(block.Number),
                     new BlockParameter(block.Number));
