@@ -21,13 +21,48 @@
 }
 @if (SignInManager.IsSignedIn(User) && (hasTron || hasEvm))
 {
+    var store = Context.GetStoreData();
+    var anyEnabled = false;
+    var anyRed = false;
+
+    if (hasTron)
+    {
+        var tronVm = UITronUSDtLikeStore.GetVM(store);
+        foreach (var item in tronVm.Items)
+        {
+            if (item.Enabled)
+            {
+                anyEnabled = true;
+                if (!TronUSDtRPCProvider.IsAvailable(item.PaymentMethodId))
+                    anyRed = true;
+            }
+        }
+    }
+    if (hasEvm)
+    {
+        var evmVm = UIEvmUsdTLikeStore.GetVM(store);
+        foreach (var item in evmVm.Items)
+        {
+            if (item.Enabled)
+            {
+                anyEnabled = true;
+                if (!EvmUsdTRpcProvider.IsAvailable(item.PaymentMethodId))
+                    anyRed = true;
+            }
+        }
+    }
+
+    var parentStatus = !anyEnabled ? "pending" : anyRed ? "disabled" : "enabled";
+
     <li class="nav-item">
-        <span class="nav-link">USD₮</span>
+        <span class="nav-link">
+            <span class="me-2 btcpay-status btcpay-status--@parentStatus"></span>
+            <span>USD₮</span>
+        </span>
     </li>
 
     @if (hasTron)
     {
-        var store = Context.GetStoreData();
         var tronResult = UITronUSDtLikeStore.GetVM(store);
 
         foreach (var item in tronResult.Items)
@@ -51,7 +86,6 @@
 
     @if (hasEvm)
     {
-        var store = Context.GetStoreData();
         var evmResult = UIEvmUsdTLikeStore.GetVM(store);
 
         foreach (var item in evmResult.Items)
