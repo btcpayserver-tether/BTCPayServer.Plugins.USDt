@@ -83,7 +83,7 @@ public static class USDtConfigurationProvider
         return config with
         {
             JsonRpcUri = serverSettings.JsonRpcUri ?? config.JsonRpcUri,
-            SmartContractAddress = (serverSettings.SmartContractAddress ?? config.SmartContractAddress).ToLowerInvariant(),
+            SmartContractAddress = serverSettings.SmartContractAddress ?? config.SmartContractAddress,
             HttpHeaders = serverSettings.HttpHeaders ?? config.HttpHeaders
         };
     }
