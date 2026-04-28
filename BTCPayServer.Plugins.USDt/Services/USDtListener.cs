@@ -52,9 +52,14 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
     protected virtual bool UseExponentialRateLimitBackoff => false;
     protected virtual long CreateInitialLastBlockHeight(HexBigInteger latestBlockNumber) => (long)latestBlockNumber.Value - 1;
+    protected virtual long GetHeadLagBlocks(TConfigurationItem configurationItem) => 0;
     protected virtual LogLevel EmptyQueueBlockAdvanceLogLevel => LogLevel.Information;
     protected virtual IDisposable? BeginLoggingScope(PaymentMethodId paymentMethodId) => null;
     protected virtual string NormalizeDestinationKey(string destination) => destination.ToLowerInvariant();
+    protected virtual string GetLogContext(TConfigurationItem configurationItem)
+    {
+        return $"{configurationItem.GetPaymentMethodId()} ({configurationItem.Chain})";
+    }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -76,18 +81,20 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
     private async Task LoopIndex(TConfigurationItem configurationItem, CancellationToken stoppingToken)
     {
+        var paymentMethodId = configurationItem.GetPaymentMethodId();
+        var logContext = GetLogContext(configurationItem);
         var rateLimitBackoffMs = 5_000;
         while (!stoppingToken.IsCancellationRequested)
             try
             {
                 var listenerState = await LoadTrackingState(configurationItem);
-                var paymentMethodId = configurationItem.GetPaymentMethodId();
                 using var _ = BeginLoggingScope(paymentMethodId);
 
                 var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
                 if (listenerState == null)
                 {
-                    logger.LogInformation("No tracking state found, new blockchain");
+                    logger.LogInformation("No tracking state found for {Listener}, new blockchain",
+                        logContext);
 
                     var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
                         BlockParameter.CreateLatest());
@@ -104,8 +111,8 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                         BlockParameter.CreateLatest());
 
                     logger.LogInformation(
-                        "Tracking state, current={CurrentBlockNumber}, latest={LatestBlockNumber}",
-                        listenerState.LastBlockHeight, latestBlockNumber);
+                        "Tracking state for {Listener}, current={CurrentBlockNumber}, latest={LatestBlockNumber}",
+                        logContext, listenerState.LastBlockHeight, latestBlockNumber);
                 }
 
                 while (!stoppingToken.IsCancellationRequested)
@@ -116,8 +123,8 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                         if (lastBlockNumber.Value > listenerState.LastBlockHeight)
                         {
                             logger.Log(EmptyQueueBlockAdvanceLogLevel,
-                                "New block avoid from {BlockNumber} to {NewBlockNumber}",
-                                listenerState.LastBlockHeight, lastBlockNumber.Value);
+                                "New block avoid for {PaymentMethodId} from {BlockNumber} to {NewBlockNumber}",
+                                paymentMethodId, listenerState.LastBlockHeight, lastBlockNumber.Value);
                             listenerState.LastBlockHeight = (long)lastBlockNumber.Value;
                         }
 
@@ -125,21 +132,37 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                     }
                     else
                     {
+                        var nextBlockHeight = listenerState.LastBlockHeight + 1;
+                        var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
+                        var safeHeadLagBlocks = GetHeadLagBlocks(configurationItem);
+                        var latestSafeBlockHeight = Math.Max(-1, (long)latestBlockNumber.Value - safeHeadLagBlocks);
+
+                        if (nextBlockHeight > latestSafeBlockHeight)
+                        {
+                            logger.LogDebug(
+                                "Waiting for a safe indexing head on {Listener}, next={NextBlockNumber}, latest={LatestBlockNumber}, lag={HeadLagBlocks}",
+                                logContext, nextBlockHeight, latestBlockNumber.Value, safeHeadLagBlocks);
+                            await Task.Delay(1_000, stoppingToken);
+                            continue;
+                        }
+
                         var block =
                             await web3Client.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(
-                                new BlockParameter(new HexBigInteger(listenerState.LastBlockHeight + 1)));
+                                new BlockParameter(new HexBigInteger(nextBlockHeight)));
 
                         if (block != null)
                         {
                             await OnNewBlockToIndex(paymentMethodId, block, stoppingToken);
-                            logger.LogInformation("New block indexed {BlockNumber}", block.Number);
+                            logger.LogInformation("New block indexed for {Listener} {BlockNumber}",
+                                logContext, block.Number);
 
                             listenerState.LastBlockHeight = (long)block.Number.Value;
                         }
                         else
                         {
-                            logger.LogInformation("Block not present on node yet {BlockNumber}",
-                                listenerState.LastBlockHeight);
+                            logger.LogInformation(
+                                "Block not present on node yet for {Listener} {BlockNumber}",
+                                logContext, listenerState.LastBlockHeight);
                             await Task.Delay(1_000, stoppingToken);
                         }
                     }
@@ -148,9 +171,18 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                     rateLimitBackoffMs = 5_000;
                 }
             }
+            catch (USDtListenerTransientException e)
+            {
+                logger.LogInformation(e,
+                    "Temporary indexing delay for {Listener}. Retrying in {DelayMs} ms",
+                    logContext, e.RetryDelayMs);
+                await Task.Delay(e.RetryDelayMs, stoppingToken);
+            }
             catch (RpcClientTimeoutException)
             {
-                logger.LogWarning("Timeout while indexing, is the node running? Retrying in 10 seconds");
+                logger.LogWarning(
+                    "Timeout while indexing {Listener}, is the node running? Retrying in 10 seconds",
+                    logContext);
                 await Task.Delay(5_000, stoppingToken);
             }
             catch (RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") ==
@@ -159,22 +191,22 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                 if (UseExponentialRateLimitBackoff)
                 {
                     logger.LogWarning(
-                        "Rate limit exceeded while indexing, use a {NodeName} node with higher limits if possible. Retrying in {DelayMs} ms",
-                        RateLimitNodeName, rateLimitBackoffMs);
+                        "Rate limit exceeded while indexing {Listener}, use a {NodeName} node with higher limits if possible. Retrying in {DelayMs} ms",
+                        logContext, RateLimitNodeName, rateLimitBackoffMs);
                     await Task.Delay(rateLimitBackoffMs, stoppingToken);
                     rateLimitBackoffMs = Math.Min(rateLimitBackoffMs * 2, 60_000);
                 }
                 else
                 {
                     logger.LogWarning(
-                        "Rate limit exceeded while indexing, use a {NodeName} node with higher limits if possible. Retrying in 10 seconds",
-                        RateLimitNodeName);
+                        "Rate limit exceeded while indexing {Listener}, use a {NodeName} node with higher limits if possible. Retrying in 10 seconds",
+                        logContext, RateLimitNodeName);
                     await Task.Delay(10_000, stoppingToken);
                 }
             }
             catch (Exception e)
             {
-                logger.LogError(e, "An error occurred while indexing");
+                logger.LogError(e, "An error occurred while indexing {Listener}", logContext);
                 await Task.Delay(10_000, stoppingToken);
             }
     }
@@ -346,4 +378,10 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         string To,
         BigInteger TotalAmount,
         string TransactionId);
+}
+
+internal sealed class USDtListenerTransientException(string message, Exception innerException, int retryDelayMs = 1_000)
+    : Exception(message, innerException)
+{
+    public int RetryDelayMs { get; } = retryDelayMs;
 }

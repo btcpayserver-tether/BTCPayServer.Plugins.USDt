@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Nethereum.Contracts;
 using Nethereum.Contracts.Standards.ERC20.ContractDefinition;
 using Nethereum.Hex.HexTypes;
+using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Eth.DTOs;
 
 namespace BTCPayServer.Plugins.USDt.Services;
@@ -57,9 +58,18 @@ public class EVMUSDtListener(
 
     protected override bool UseExponentialRateLimitBackoff => true;
 
+    protected override long GetHeadLagBlocks(EVMUSDtLikeConfigurationItem configurationItem)
+    {
+        return configurationItem.Chain is Constants.PolygonChainName or Constants.AmoyChainName ? 2 : 1;
+    }
+
     protected override IDisposable? BeginLoggingScope(PaymentMethodId paymentMethodId)
     {
-        return _logger.BeginScope("EVM PMI: {PaymentMethodId}", paymentMethodId);
+        var chain = usdtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration)
+            ? configuration.Chain
+            : paymentMethodId.ToString();
+
+        return _logger.BeginScope("EVM PMI: {PaymentMethodId}, Chain: {Chain}", paymentMethodId, chain);
     }
 
     protected override async Task<IReadOnlyCollection<USDtTransferMatch>> GetTransfersAsync(
@@ -87,7 +97,18 @@ public class EVMUSDtListener(
                     (object[])destinationBatch,
                     new BlockParameter(block.Number),
                     new BlockParameter(block.Number));
-                var part = await transferEvent.GetAllChangesAsync(filter);
+                List<EventLog<TransferEventDTO>> part;
+                try
+                {
+                    part = await transferEvent.GetAllChangesAsync(filter);
+                }
+                catch (RpcResponseException e) when (IsBlockRangeBeyondCurrentHeadError(e))
+                {
+                    throw new USDtListenerTransientException(
+                        $"eth_getLogs is not ready for {paymentMethodId} block {(long)block.Number.Value}",
+                        e);
+                }
+
                 if (part != null && part.Count != 0)
                     changes.AddRange(part);
             }
@@ -150,6 +171,13 @@ public class EVMUSDtListener(
             .Where(match => destinationKeySet.Contains(match.DestinationKey))
             .DistinctBy(match => match.TransactionId)
             .ToArray();
+    }
+
+    internal static bool IsBlockRangeBeyondCurrentHeadError(Exception exception)
+    {
+        return exception.Message.Contains("block range extends beyond current head block",
+                   StringComparison.OrdinalIgnoreCase) &&
+               exception.Message.Contains("eth_getLogs", StringComparison.OrdinalIgnoreCase);
     }
 
     internal sealed record TransferLogSnapshot(

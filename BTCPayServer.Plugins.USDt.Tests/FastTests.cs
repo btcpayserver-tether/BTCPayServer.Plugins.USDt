@@ -236,4 +236,56 @@ public class FastTests : UnitTestBase
         Assert.Equal(new BigInteger(123), match.TotalAmount);
         Assert.Equal("abc-1", match.TransactionId);
     }
+
+    [Fact]
+    public void EvmListenerDetectsHeadLagEthGetLogsErrors()
+    {
+        var exception = new Exception("block range extends beyond current head block: eth_getLogs");
+
+        Assert.True(EVMUSDtListener.IsBlockRangeBeyondCurrentHeadError(exception));
+    }
+
+    [Fact]
+    public void EvmListenerIgnoresUnrelatedEthErrors()
+    {
+        var exception = new Exception("execution reverted: eth_call");
+
+        Assert.False(EVMUSDtListener.IsBlockRangeBeyondCurrentHeadError(exception));
+    }
+
+    [Theory]
+    [InlineData("POLYGON", 2)]
+    [InlineData("AMOY", 2)]
+    [InlineData("ETHEREUM", 1)]
+    public void EvmListenerUsesExpectedHeadLagPerChain(string chain, long expectedLag)
+    {
+        var configuration = new EVMUSDtLikeConfigurationItem(chain)
+        {
+            JsonRpcUri = new Uri("https://example.com"),
+            SmartContractAddress = "0x1234567890123456789012345678901234567890",
+            Currency = "USDt",
+            DisplayName = $"USDt on {chain}",
+            Divisibility = 6,
+            CryptoImagePath = "icon",
+            BlockExplorerLink = "https://example.com/tx/{0}",
+            DefaultRateRules = [],
+            CurrencyDisplayName = "USD₮",
+            ChainId = 1
+        };
+
+        Assert.Equal(expectedLag, TestableEvmListener.GetHeadLag(configuration));
+    }
+
+    private sealed class TestableEvmListener : EVMUSDtListener
+    {
+        public TestableEvmListener()
+            : base(null!, null!, null!, null!, null!, null!, null!, null!)
+        {
+        }
+
+        public static long GetHeadLag(EVMUSDtLikeConfigurationItem configuration)
+        {
+            return new TestableEvmListener().GetHeadLagBlocks(configuration);
+        }
+    }
 }
