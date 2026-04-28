@@ -43,16 +43,16 @@ public class UITronUSDtLikeStoreController(
     }
 
     [NonAction]
-    public ViewTronUSDtStoreOptionsViewModel GetVM(StoreData storeData)
+    public ViewUSDtStoreOptionsViewModel GetVM(StoreData storeData)
     {
         var excludeFilters = storeData.GetStoreBlob().GetExcludedPaymentMethods();
 
-        var vm = new ViewTronUSDtStoreOptionsViewModel();
+        var vm = new ViewUSDtStoreOptionsViewModel();
         foreach (var item in pluginConfiguration.TronUSDtLikeConfigurationItems.Values)
         {
             var pmi = item.GetPaymentMethodId();
             var matchedPaymentMethod = storeData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(pmi, handlers);
-            vm.Items.Add(new ViewTronUSDtStoreOptionItemViewModel
+            vm.Items.Add(new ViewUSDtStoreOptionItemViewModel
             {
                 PaymentMethodId = pmi,
                 DisplayName = item.DisplayName,
@@ -145,7 +145,7 @@ public class UITronUSDtLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            var addresses = viewModel.Address.Split([',', ';', ' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(TronUSDtAddressHelper.IsValid)
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
             
@@ -200,8 +200,8 @@ public class UITronUSDtLikeStoreController(
             {
                 currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = viewModel.ExcludeAmountFromPaymentLink;
                 messages.Add(viewModel.ExcludeAmountFromPaymentLink 
-                    ? "QR code will now exclude the amount parameter" 
-                    : "QR code will now include the amount parameter");
+                    ? "Payment link QR codes will now exclude the amount parameter" 
+                    : "Payment link QR codes will now include the amount parameter");
             }
 
             if (messages.Count > 0)

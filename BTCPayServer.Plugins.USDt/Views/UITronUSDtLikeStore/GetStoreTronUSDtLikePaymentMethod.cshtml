@@ -1,14 +1,15 @@
 @using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Abstractions.Models
 @using BTCPayServer.Client
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditTronUSDtPaymentMethodViewModel;
 
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData["NavPartialName"] = "../UIStores/_Nav";
-    ViewData.SetActivePage("USD\u20ae on TRON payment settings", "USD\u20ae on TRON payment settings", "USD\u20ae on TRON payment settings");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on TRON payment settings", "TronStore");
 }
 <h3 class="mb-3">USD₮ on TRON payment settings</h3>
 <div class="row">
@@ -31,7 +32,7 @@
 <div class="row">
     <div class="col-md-8">
         <p class="mb-0">
-            Configures the addresses used or payment by your customers. Each address is reserved for the time of payment and settlement, so we advise you to set several addresses.
+            Configures the addresses used for payments by your customers. Each address is reserved for the time of payment and settlement, so we advise you to set several addresses.
         </p>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
@@ -117,7 +118,7 @@
                 Please add at least one address before using this payment method.
             </div>
         }
-        <partial name="_Confirm" model="@(new ConfirmModel("Remove store user", "This action will prevent the user from accessing this store and its settings. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
+        <partial name="_Confirm" model="@(new ConfirmModel("Remove address", "This action will stop tracking the selected address for this store. Are you sure?", "Delete"))" permission="@Policies.CanModifyStoreSettings"/>
         <form method="post"
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")" class="mt-4" enctype="multipart/form-data">

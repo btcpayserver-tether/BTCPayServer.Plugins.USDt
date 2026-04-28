@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
-using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
@@ -41,9 +40,10 @@ public class TronUSDtLikePaymentMethodHandler(
         };
         var availableAddress = await config
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
-                               throw new PaymentMethodUnavailableException("All your TRON addresses are currently waiting payment");
+                               throw new PaymentMethodUnavailableException(
+                                   "All your TRON addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
-        context.Prompt.PaymentMethodFee = 0; 
+        context.Prompt.PaymentMethodFee = 0;
         context.Prompt.Details = JObject.FromObject(details, Serializer);
     }
 

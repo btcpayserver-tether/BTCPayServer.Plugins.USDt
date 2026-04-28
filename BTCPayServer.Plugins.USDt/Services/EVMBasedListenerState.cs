@@ -2,7 +2,7 @@
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public class TronUSDtListenerState
+public class EVMBasedListenerState
 {
     public BigInteger LastBlockHeight { get; set; }
 }

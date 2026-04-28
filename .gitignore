@@ -3,3 +3,5 @@
 .idea
 Plugins/packed
 .vs/
+*.DotSettings
+*.DotSettings.user

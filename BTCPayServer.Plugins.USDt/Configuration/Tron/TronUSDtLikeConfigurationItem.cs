@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace BTCPayServer.Plugins.USDt.Configuration.Tron;
 
-public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem
+public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem, IUSDtRpcConfigurationItem
 {
     public override string Chain => Constants.TronChainName;
 
@@ -16,6 +16,7 @@ public record TronUSDtLikeConfigurationItem : USDtPluginConfigurationItem
     public required string BlockExplorerLink { get; init; }
     public required string[] DefaultRateRules { get; init; }
     public required string CurrencyDisplayName { get; init; }
+    public double BlockTimeSeconds { get; init; } = 3.0;
     
     /// <summary>
     /// Custom HTTP headers to be sent with every RPC request.

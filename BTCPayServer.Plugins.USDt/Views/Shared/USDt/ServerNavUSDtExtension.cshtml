@@ -1,0 +1,45 @@
+@using BTCPayServer
+@using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Client
+@using BTCPayServer.Data
+@using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Plugins.USDt.Configuration
+@using BTCPayServer.Plugins.USDt.Controllers
+@using BTCPayServer.Views.Server
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@inject SignInManager<ApplicationUser> SignInManager;
+@inject USDtPluginConfiguration USDtPluginConfiguration;
+@inject IScopeProvider ScopeProvider
+@{
+    var hasTron = USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Any();
+    var hasEvm = USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.Any();
+}
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && (hasTron || hasEvm))
+{
+    <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+        <span class="nav-link">USD₮</span>
+    </li>
+
+    @if (hasTron)
+    {
+        <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings" style="padding-left: calc(3rem + var(--btcpay-space-xs));">
+            <a asp-controller="UITronUSDtLikeServer" asp-action="GetServerConfig"
+               class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "TronServer")">TRON</a>
+        </li>
+    }
+
+    @if (hasEvm)
+    {
+        foreach (var item in USDtPluginConfiguration.EVMUSDtLikeConfigurationItems)
+        {
+            var activeKey = $"EVM-{item.Key}";
+            <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings" style="padding-left: calc(3rem + var(--btcpay-space-xs));">
+                <a asp-controller="UIEVMUSDtLikeServer" asp-action="GetServerConfig"
+                   asp-route-paymentMethodId="@item.Key"
+                   class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), activeKey)">@item.Value.Chain</a>
+            </li>
+        }
+    }
+}
