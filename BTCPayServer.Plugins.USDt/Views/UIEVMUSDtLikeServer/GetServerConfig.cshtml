@@ -11,6 +11,7 @@
 
 <form method="post" enctype="multipart/form-data">
     <input type="hidden" asp-for="DisplayName" />
+    <input type="hidden" asp-for="ChainDisplayName" />
     <div class="sticky-header">
         <h2>@ViewData.Model.DisplayName server settings</h2>
         <button id="SaveButton" type="submit" class="btn btn-primary" name="command" value="Save">Save</button>
