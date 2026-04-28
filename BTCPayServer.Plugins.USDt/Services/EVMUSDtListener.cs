@@ -84,7 +84,7 @@ public class EVMUSDtListener(
             {
                 var filter = transferEvent.CreateFilterInput(
                     (object?)null,
-                    (object)destinationBatch,
+                    (object[])destinationBatch,
                     new BlockParameter(block.Number),
                     new BlockParameter(block.Number));
                 var part = await transferEvent.GetAllChangesAsync(filter);
