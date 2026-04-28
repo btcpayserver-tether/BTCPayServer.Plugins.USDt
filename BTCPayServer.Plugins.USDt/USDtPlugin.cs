@@ -74,10 +74,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         // For future usages (multiple TRC20)
         //services.AddSingleton<IUIExtension>(new UIExtension("TronUSDt/StoreNavTronUSDtExtension", "store-integrations-nav"));
-        services.AddUIExtension("server-nav","TronUSDtLike/ServerNavTronUSDtExtension");
-        services.AddUIExtension("store-wallets-nav", "TronUSDtLike/StoreWalletsNavTronUSDtExtension");
         services.AddUIExtension("store-invoices-payments", "TronUSDtLike/ViewTronUSDtLikePaymentData");
-        services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
         services.AddSingleton<ISyncSummaryProvider, TronUSDtSyncSummaryProvider>();
         
         services.AddSingleton<EVMUSDtRPCProvider>();
@@ -91,10 +88,10 @@ public class USDtPlugin : BaseBTCPayServerPlugin
 
         services.AddSingleton<ISyncSummaryProvider, EVMUSDtSyncSummaryProvider>();
 
-        // Store UI extensions for all EVM chains (addresses management, checkout, server nav)
-        services.AddUIExtension("store-wallets-nav", "EVMUSDtLike/StoreWalletsNavEVMUSDtExtension");
+        // Combined UI extensions for all chains (store wallets nav, server nav, checkout)
+        services.AddUIExtension("store-wallets-nav", "USDt/StoreWalletsNavUSDtExtension");
+        services.AddUIExtension("server-nav", "USDt/ServerNavUSDtExtension");
         services.AddUIExtension("checkout-payment-method", "EmptyCheckoutPaymentMethodExtension");
-        services.AddUIExtension("server-nav", "EVMUSDtLike/ServerNavEVMUSDtExtension");
 
         services.AddSingleton<ISwaggerProvider, SwaggerProvider>();
     }
