@@ -63,10 +63,10 @@
 
 
     <ItemGroup>
-        <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreNavTronUSDtExtension.cshtml" />
-        <AdditionalFiles Include="Views\Shared\TronUSDtLike\StoreWalletsNavTronUSDtExtension.cshtml" />
         <AdditionalFiles Include="Views\Shared\TronUSDtLike\TronUSDtSyncSummary.cshtml" />
         <AdditionalFiles Include="Views\Shared\TronUSDtLike\ViewTronUSDtLikePaymentData.cshtml" />
+        <AdditionalFiles Include="Views\Shared\USDt\StoreWalletsNavUSDtExtension.cshtml" />
+        <AdditionalFiles Include="Views\Shared\USDt\ServerNavUSDtExtension.cshtml" />
         <AdditionalFiles Include="Views\UITronUSDtLikeStore\GetStoreTronUSDtLikePaymentMethod.cshtml"/>
         <AdditionalFiles Include="Views\UITronUSDtLikeStore\GetStoreTronUSDtLikePaymentMethods.cshtml"/>
     </ItemGroup>
