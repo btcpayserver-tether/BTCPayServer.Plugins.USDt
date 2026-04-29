@@ -9,6 +9,7 @@ on:
 jobs:
   build-plugin:
     runs-on: ubuntu-latest
+    environment: publish
 
     steps:
       - name: Checkout repository
@@ -19,11 +20,13 @@ jobs:
 
       - name: Call API to create a build
         run: |
-          curl -v -X POST "https://plugin-builder.btcpayserver.org/api/v1/plugins/${{ env.pluginSlug }}/builds" \
+          curl --fail-with-body -v -X POST "https://plugin-builder.btcpayserver.org/api/v1/plugins/${{ env.pluginSlug }}/builds" \
+          -u "$API_USERNAME:$API_PASSWORD" \
           -H "Content-Type: application/json" \
-          -H "Authorization: Basic $(echo -n '${{ secrets.API_USERNAME }}:${{ secrets.API_PASSWORD }}' | base64)" \
           -d '{
             "GitRef": "${{ env.GIT_REF }}"
           }'
         env:
+          API_USERNAME: ${{ secrets.API_USERNAME }}
+          API_PASSWORD: ${{ secrets.API_PASSWORD }}
           pluginSlug: "tether-usdt" 
