@@ -2,25 +2,28 @@
 
 ![BTCPay USDt Plugin](Docs/banner.png)
 
-This repository contains the source code for the BTCPay Server plugin that enables the receipt of USDt payments on the TRON blockchain. 
+This repository contains the source code for the BTCPay Server plugin that enables the receipt of USDt payments on multiple blockchains. 
 The plugin extends the functionality of BTCPay Server, a self-hosted cryptocurrency payment processor that allows merchants to accept Bitcoin and other cryptocurrencies.
 
 ## 🎨 Features
 
 - **USDt Payments**: Receive USDt payments directly on your BTCPay Server instance.
-- **Customizable Settings**: Configure TRON JSON RPC endpoint and addresses to suit your requirements.
-- **Invoice Generation**: Generate invoices with TRON addresses as payment reception.
-- **Blockchain Monitoring**: Scan the TRON blockchain to detect payments in full, overpaid, or partial amounts.
-- **Automatic Settlement**: Continuously verify the TRON blockchain to settle payments securely and efficiently.
+- **Multi-Chain Support**: Accept USDt on TRON, Ethereum, and Polygon.
+- **Customizable Settings**: Configure JSON RPC endpoints and addresses per blockchain to suit your requirements.
+- **Invoice Generation**: Generate invoices with blockchain addresses as payment reception.
+- **Blockchain Monitoring**: Scan supported blockchains to detect payments in full, overpaid, or partial amounts.
+- **Automatic Settlement**: Continuously verify blockchains to settle payments securely and efficiently.
 
 ## Supported blockchains
 
-- [x] TRON 
+- [x] TRON
+- [x] Ethereum
+- [x] Polygon
 
 ## 📗 Requirements
 
 - BTCPay Server: Make sure you have a running instance of BTCPay Server. You can find more information and installation instructions [here](https://docs.btcpayserver.org/).
-- TRON Wallet: Set up a TRON wallet (e.g., Ledger, TrustWallet... ) to generate and manage TRON addresses for receiving USDt payments.
+- A compatible wallet for each chain you want to use (e.g., Ledger, MetaMask, TrustWallet...) to generate and manage addresses for receiving USDt payments.
 
 ## 🚀 Installation
 
@@ -38,6 +41,16 @@ This plugin aims to cover USDt payment over different chains, a rigorous naming 
 - Blockchain: TRON
 - PaymentMethodId for USDt: USDT-TRON
 - TRON specific implementation: Tron* and TronUSDtLike* for TRC20 compatible stuff
+
+### Ethereum
+- Blockchain: Ethereum
+- PaymentMethodId for USDt: USDT-Ethereum
+- Ethereum specific implementation: Ethereum* and EthereumUSDtLike* for ERC20 compatible stuff
+
+### Polygon
+- Blockchain: Polygon
+- PaymentMethodId for USDt: USDT-Polygon
+- Polygon specific implementation: Polygon* and PolygonUSDtLike* for ERC20 compatible stuff
 
 
 ## 💚 Support
