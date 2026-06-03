@@ -24,8 +24,8 @@ public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId) : IPa
             return null;
 
         if (excludeAmount)
-            return destination;
+            return $"tron:{destination}";
 
-        return $"{destination}?amount={due.ToString(CultureInfo.InvariantCulture)}";
+        return $"tron:{destination}?amount={due.ToString(CultureInfo.InvariantCulture)}";
     }
 }
