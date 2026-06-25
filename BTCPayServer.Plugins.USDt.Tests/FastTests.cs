@@ -5,7 +5,6 @@ using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using BTCPayServer.Client.Models;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace BTCPayServer.Plugins.USDt.Tests;
 
