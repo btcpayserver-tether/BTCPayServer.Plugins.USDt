@@ -10,7 +10,6 @@ using BTCPayServer.Client.Models;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace BTCPayServer.Plugins.USDt.Tests;
 
