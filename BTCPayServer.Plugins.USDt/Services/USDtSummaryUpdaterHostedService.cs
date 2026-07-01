@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
-public abstract class USDtSummaryUpdaterHostedService(Logs logs) : IHostedService
+public abstract class USDtSummaryUpdaterHostedService(Logs logs, USDtChainActivationService activationService) : IHostedService
 {
     private CancellationTokenSource? _cts;
 
@@ -43,6 +43,12 @@ public abstract class USDtSummaryUpdaterHostedService(Logs logs) : IHostedServic
             {
                 try
                 {
+                    if (!await activationService.IsActivatedAsync(paymentMethodId, cancellation))
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(30), cancellation);
+                        continue;
+                    }
+
                     await UpdateSummary(paymentMethodId);
                     await Task.Delay(IsAvailable(paymentMethodId) ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(30),
                         cancellation);

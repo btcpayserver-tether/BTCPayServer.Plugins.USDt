@@ -11,6 +11,7 @@ using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Services.Events;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
@@ -29,7 +30,8 @@ public class UIEVMUSDtLikeStoreController(
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
-    USDtPluginConfiguration pluginConfiguration) : Controller
+    USDtPluginConfiguration pluginConfiguration,
+    EventAggregator eventAggregator) : Controller
 {
     private StoreData StoreData => HttpContext.GetStoreData();
 
@@ -115,10 +117,12 @@ public class UIEVMUSDtLikeStoreController(
             StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         if (currentPaymentMethodConfig is null) return NotFound();
 
+        currentPaymentMethodConfig.MarkActivated();
         currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
+        eventAggregator.Publish(new USDtSettingsChanged());
 
         TempData.SetStatusMessageModel(new StatusMessageModel
         {
@@ -165,6 +169,7 @@ public class UIEVMUSDtLikeStoreController(
                 .. currentPaymentMethodConfig.Addresses,
                 .. addresses
             ];
+            currentPaymentMethodConfig.MarkActivated();
 
             if (addresses.Length == 1)
             {
@@ -183,20 +188,27 @@ public class UIEVMUSDtLikeStoreController(
                 });
             }
         }
-        else if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
+        else
         {
-            blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
+            if (viewModel.Enabled)
+                currentPaymentMethodConfig.MarkActivated();
 
-            TempData.SetStatusMessageModel(new StatusMessageModel
+            if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
             {
-                Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
-                Severity = StatusMessageModel.StatusSeverity.Success
-            });
+                blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
+
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
+                    Severity = StatusMessageModel.StatusSeverity.Success
+                });
+            }
         }
 
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
+        eventAggregator.Publish(new USDtSettingsChanged());
 
         return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod), new { storeId = store.Id, paymentMethodId });
     }

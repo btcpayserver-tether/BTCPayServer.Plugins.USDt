@@ -25,6 +25,7 @@ public class TronUSDtListener(
     EventAggregator eventAggregator,
     TronUSDtRPCProvider tronUSDtRpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
+    USDtChainActivationService activationService,
     ILogger<TronUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService)
@@ -33,6 +34,7 @@ public class TronUSDtListener(
         settingsRepository,
         eventAggregator,
         tronUSDtRpcProvider,
+        activationService,
         logger,
         handlers,
         paymentService)

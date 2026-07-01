@@ -26,6 +26,7 @@ public class EVMUSDtListener(
     EventAggregator eventAggregator,
     EVMUSDtRPCProvider rpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
+    USDtChainActivationService activationService,
     ILogger<EVMUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService)
@@ -34,6 +35,7 @@ public class EVMUSDtListener(
         settingsRepository,
         eventAggregator,
         rpcProvider,
+        activationService,
         logger,
         handlers,
         paymentService)
