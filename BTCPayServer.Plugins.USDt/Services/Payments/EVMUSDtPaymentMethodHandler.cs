@@ -68,6 +68,17 @@ public class EVMUSDtPaymentMethodHandler(
                throw new FormatException($"Invalid {nameof(EVMUSDtPaymentMethodHandler)}");
     }
 
+    public Task ValidatePaymentMethodConfig(PaymentMethodConfigValidationContext validationContext)
+    {
+        var config = ParsePaymentMethodConfig(validationContext.Config);
+        var previousConfig = validationContext.PreviousConfig is null
+            ? null
+            : ParsePaymentMethodConfig(validationContext.PreviousConfig);
+        config.PreserveActivationFrom(previousConfig);
+        validationContext.Config = JToken.FromObject(config, Serializer);
+        return Task.CompletedTask;
+    }
+
     public EVMUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
     {
         return details.ToObject<EVMUSDtLikeOnChainPaymentMethodDetails>(Serializer);

@@ -52,6 +52,7 @@ public class USDtPlugin : BaseBTCPayServerPlugin
         };
 
         services.AddSingleton(pluginConfiguration);
+        services.AddSingleton<USDtChainActivationService>();
         services.AddHostedService<USDtPluginConfigurationBootstrapper>();
 
         services.AddCurrencyData(new CurrencyData

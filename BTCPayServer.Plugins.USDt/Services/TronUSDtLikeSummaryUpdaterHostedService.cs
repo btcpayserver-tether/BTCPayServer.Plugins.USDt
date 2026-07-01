@@ -9,8 +9,9 @@ namespace BTCPayServer.Plugins.USDt.Services;
 public class TronUSDtLikeSummaryUpdaterHostedService(
     TronUSDtRPCProvider tronUSDtRpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
-    Logs logs)
-    : USDtSummaryUpdaterHostedService(logs)
+    Logs logs,
+    USDtChainActivationService activationService)
+    : USDtSummaryUpdaterHostedService(logs, activationService)
 {
     protected override IEnumerable<PaymentMethodId> GetPaymentMethodIds()
     {
