@@ -26,6 +26,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     USDtRPCProvider<TConfigurationItem> rpcProvider,
+    USDtChainActivationService activationService,
     ILogger logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService) : IHostedService
@@ -87,9 +88,17 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         while (!stoppingToken.IsCancellationRequested)
             try
             {
-                var listenerState = await LoadTrackingState(configurationItem);
                 using var _ = BeginLoggingScope(paymentMethodId);
+                if (!await activationService.IsActivatedAsync(paymentMethodId, stoppingToken))
+                {
+                    logger.LogDebug(
+                        "Skipping indexing for {Listener}; no store has activated this payment method yet",
+                        logContext);
+                    await Task.Delay(30_000, stoppingToken);
+                    continue;
+                }
 
+                var listenerState = await LoadTrackingState(configurationItem);
                 var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
                 if (listenerState == null)
                 {
@@ -170,6 +179,9 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                     await SetTrackingState(configurationItem, listenerState);
                     rateLimitBackoffMs = 5_000;
                 }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
             }
             catch (USDtListenerTransientException e)
             {

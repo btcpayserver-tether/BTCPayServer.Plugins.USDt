@@ -12,6 +12,7 @@ using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Controllers.ViewModels;
 using BTCPayServer.Plugins.USDt.Services;
+using BTCPayServer.Plugins.USDt.Services.Events;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
@@ -30,7 +31,8 @@ public class UITronUSDtLikeStoreController(
     PaymentMethodHandlerDictionary handlers,
     InvoiceRepository invoiceRepository,
     DisplayFormatter displayFormatter,
-    USDtPluginConfiguration pluginConfiguration) : Controller
+    USDtPluginConfiguration pluginConfiguration,
+    EventAggregator eventAggregator) : Controller
 {
     private StoreData StoreData => HttpContext.GetStoreData();
 
@@ -115,10 +117,12 @@ public class UITronUSDtLikeStoreController(
             StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         if (currentPaymentMethodConfig is null) return NotFound();
 
+        currentPaymentMethodConfig.MarkActivated();
         currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
+        eventAggregator.Publish(new USDtSettingsChanged());
 
         TempData.SetStatusMessageModel(new StatusMessageModel
         {
@@ -165,6 +169,7 @@ public class UITronUSDtLikeStoreController(
                 .. currentPaymentMethodConfig.Addresses,
                 .. addresses
             ];
+            currentPaymentMethodConfig.MarkActivated();
 
 
             if (addresses.Length == 1)
@@ -188,6 +193,8 @@ public class UITronUSDtLikeStoreController(
         {
             // This is the "Save" form submission (not the "Add address" form)
             var messages = new List<string>();
+            if (viewModel.Enabled)
+                currentPaymentMethodConfig.MarkActivated();
 
             if (viewModel.Enabled == blob.IsExcluded(paymentMethodId))
             {
@@ -217,6 +224,7 @@ public class UITronUSDtLikeStoreController(
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
+        eventAggregator.Publish(new USDtSettingsChanged());
 
 
         return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });

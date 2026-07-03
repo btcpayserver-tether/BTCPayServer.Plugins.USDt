@@ -68,6 +68,17 @@ public class TronUSDtLikePaymentMethodHandler(
                throw new FormatException($"Invalid {nameof(TronUSDtLikePaymentMethodHandler)}");
     }
 
+    public Task ValidatePaymentMethodConfig(PaymentMethodConfigValidationContext validationContext)
+    {
+        var config = ParsePaymentMethodConfig(validationContext.Config);
+        var previousConfig = validationContext.PreviousConfig is null
+            ? null
+            : ParsePaymentMethodConfig(validationContext.PreviousConfig);
+        config.PreserveActivationFrom(previousConfig);
+        validationContext.Config = JToken.FromObject(config, Serializer);
+        return Task.CompletedTask;
+    }
+
     public TronUSDtLikeOnChainPaymentMethodDetails? ParsePaymentPromptDetails(JToken details)
     {
         return details.ToObject<TronUSDtLikeOnChainPaymentMethodDetails>(Serializer);

@@ -222,7 +222,7 @@ public static class USDtConfigurationProvider
                 ],
                 Divisibility = 6,
                 SmartContractAddress = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                JsonRpcUri = new Uri("https://polygon-rpc.com"),
+                JsonRpcUri = new Uri("https://polygon.drpc.org"),
                 BlockExplorerLink = "https://polygonscan.com/tx/{0}",
                 BlockTimeSeconds = 2.0,
                 ChainId = 137
@@ -240,7 +240,7 @@ public static class USDtConfigurationProvider
                 ],
                 Divisibility = 6,
                 SmartContractAddress = "0x0000000000000000000000000000000000000000",
-                JsonRpcUri = new Uri("https://rpc-amoy.polygon.technology/"),
+                JsonRpcUri = new Uri("https://polygon-amoy.drpc.org"),
                 BlockExplorerLink = "https://amoy.polygonscan.com/tx/{0}",
                 BlockTimeSeconds = 2.0,
                 ChainId = 80002

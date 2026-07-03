@@ -1,11 +1,15 @@
 using System.Numerics;
+using System.Security.Claims;
+using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
+using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using BTCPayServer.Client.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Newtonsoft.Json.Linq;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace BTCPayServer.Plugins.USDt.Tests;
 
@@ -179,6 +183,100 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public void UsdtPaymentMethodConfigDoesNotActivateExcludedEmptyConfigs()
+    {
+        var config = new USDtPaymentMethodConfig();
+
+        Assert.False(config.ActivatesChain(true));
+        Assert.False(USDtChainActivationService.IsActivated(null, false));
+    }
+
+    [Fact]
+    public void UsdtPaymentMethodConfigActivatesLegacyEnabledConfigs()
+    {
+        var config = new USDtPaymentMethodConfig();
+
+        Assert.True(config.ActivatesChain(false));
+    }
+
+    [Fact]
+    public void UsdtPaymentMethodConfigActivatesLegacyConfigsWithAddresses()
+    {
+        var config = new USDtPaymentMethodConfig
+        {
+            Addresses = ["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"]
+        };
+
+        Assert.True(config.ActivatesChain(true));
+    }
+
+    [Fact]
+    public void UsdtPaymentMethodConfigKeepsChainActivatedAfterAddressesAreRemoved()
+    {
+        var config = new USDtPaymentMethodConfig
+        {
+            Addresses = ["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"]
+        };
+
+        config.MarkActivated();
+        config.Addresses = [];
+
+        Assert.True(config.ActivatesChain(true));
+    }
+
+    [Fact]
+    public void UsdtPaymentMethodConfigPreservesActivationFromPreviousAddresses()
+    {
+        var previousConfig = new USDtPaymentMethodConfig
+        {
+            Addresses = ["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"]
+        };
+        var config = new USDtPaymentMethodConfig();
+
+        config.PreserveActivationFrom(previousConfig);
+
+        Assert.True(config.Activated);
+        Assert.True(config.ActivatesChain(true));
+    }
+
+    [Fact]
+    public async Task EvmHandlerPreservesActivationWhenGreenfieldUpdateRemovesLastAddress()
+    {
+        var handler = new EVMUSDtPaymentMethodHandler(CreateEvmConfiguration(), null!, null!, null!);
+        var previousConfig = JObject.FromObject(new EVMUSDtPaymentMethodConfig
+        {
+            Addresses = ["0x742d35cc6634c0532925a3b844bc454e4438f44e"]
+        }, handler.Serializer);
+        var incomingConfig = JObject.FromObject(new EVMUSDtPaymentMethodConfig(), handler.Serializer);
+        var context = CreateValidationContext(incomingConfig, previousConfig);
+
+        await handler.ValidatePaymentMethodConfig(context);
+
+        var parsedConfig =
+            Assert.IsType<EVMUSDtPaymentMethodConfig>(((IPaymentMethodHandler)handler).ParsePaymentMethodConfig(context.Config));
+        Assert.True(parsedConfig.Activated);
+        Assert.Empty(parsedConfig.Addresses);
+    }
+
+    [Fact]
+    public async Task TronHandlerMarksIncomingAddressConfigsActivated()
+    {
+        var handler = new TronUSDtLikePaymentMethodHandler(CreateTronConfiguration(), null!, null!, null!);
+        var incomingConfig = JObject.FromObject(new TronUSDtPaymentMethodConfig
+        {
+            Addresses = ["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"]
+        }, handler.Serializer);
+        var context = CreateValidationContext(incomingConfig);
+
+        await handler.ValidatePaymentMethodConfig(context);
+
+        var parsedConfig =
+            Assert.IsType<TronUSDtPaymentMethodConfig>(((IPaymentMethodHandler)handler).ParsePaymentMethodConfig(context.Config));
+        Assert.True(parsedConfig.Activated);
+        Assert.Equal(["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"], parsedConfig.Addresses);
+    }
+
+    [Fact]
     public void EvmListenerBatchesDestinationFiltersToReduceRpcFanOut()
     {
         var destinationKeys = Enumerable.Range(0, 45)
@@ -279,7 +377,7 @@ public class FastTests : UnitTestBase
     private sealed class TestableEvmListener : EVMUSDtListener
     {
         public TestableEvmListener()
-            : base(null!, null!, null!, null!, null!, null!, null!, null!)
+            : base(null!, null!, null!, null!, null!, null!, null!, null!, null!)
         {
         }
 
@@ -287,5 +385,48 @@ public class FastTests : UnitTestBase
         {
             return new TestableEvmListener().GetHeadLagBlocks(configuration);
         }
+    }
+
+    private static PaymentMethodConfigValidationContext CreateValidationContext(JToken config, JToken? previousConfig = null)
+    {
+        return new PaymentMethodConfigValidationContext(
+            null!,
+            new ModelStateDictionary(),
+            config,
+            new ClaimsPrincipal(),
+            previousConfig);
+    }
+
+    private static EVMUSDtLikeConfigurationItem CreateEvmConfiguration()
+    {
+        return new EVMUSDtLikeConfigurationItem("ETHEREUM")
+        {
+            JsonRpcUri = new Uri("https://example.com"),
+            SmartContractAddress = "0x1234567890123456789012345678901234567890",
+            Currency = "USDt",
+            DisplayName = "USDt on ETHEREUM",
+            Divisibility = 6,
+            CryptoImagePath = "icon",
+            BlockExplorerLink = "https://example.com/tx/{0}",
+            DefaultRateRules = [],
+            CurrencyDisplayName = "USD₮",
+            ChainId = 1
+        };
+    }
+
+    private static TronUSDtLikeConfigurationItem CreateTronConfiguration()
+    {
+        return new TronUSDtLikeConfigurationItem
+        {
+            JsonRpcUri = new Uri("https://example.com"),
+            SmartContractAddress = "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf",
+            Currency = "USDt",
+            DisplayName = "USDt on TRON",
+            Divisibility = 6,
+            CryptoImagePath = "icon",
+            BlockExplorerLink = "https://example.com/tx/{0}",
+            DefaultRateRules = [],
+            CurrencyDisplayName = "USD₮"
+        };
     }
 }
