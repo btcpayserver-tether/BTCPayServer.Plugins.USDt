@@ -23,8 +23,11 @@ public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId) : IPa
         if (string.IsNullOrEmpty(destination))
             return null;
 
+        // Bare address, no URI scheme: the store setting documents this mode as "the QR
+        // code will only contain the destination address", and QR scanners that reject
+        // tron: URIs (e.g. TronLink's in-Send scanner) only accept a plain base58 address.
         if (excludeAmount)
-            return $"tron:{destination}";
+            return destination;
 
         return $"tron:{destination}?amount={due.ToString(CultureInfo.InvariantCulture)}";
     }

@@ -39,7 +39,7 @@ public class FastTests : UnitTestBase
             12.34m,
             false);
 
-        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
+        Assert.Equal("tron:TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
     }
 
     [Fact]
