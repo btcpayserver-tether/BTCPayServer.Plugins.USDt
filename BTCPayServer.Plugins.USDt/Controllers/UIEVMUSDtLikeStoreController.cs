@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -92,6 +93,7 @@ public class UIEVMUSDtLikeStoreController(
             ChainDisplayName = config.Chain,
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
+            PaymentLinkTemplate = matchedPaymentMethodConfig.PaymentLinkTemplate,
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
                 new EditEVMUSDtPaymentMethodViewModel.EditEVMUSDtPaymentMethodAddressViewModel
                 {
@@ -153,7 +155,7 @@ public class UIEVMUSDtLikeStoreController(
                 .Select(a => a.ToLowerInvariant())
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
 
-            if(addresses.Any() == false)
+            if (addresses.Any() == false)
             {
                 TempData.SetStatusMessageModel(new StatusMessageModel
                 {
@@ -190,6 +192,7 @@ public class UIEVMUSDtLikeStoreController(
         }
         else
         {
+            var messages = new List<string>();
             if (viewModel.Enabled)
                 currentPaymentMethodConfig.MarkActivated();
 
@@ -197,11 +200,13 @@ public class UIEVMUSDtLikeStoreController(
             {
                 blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
 
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
-                    Severity = StatusMessageModel.StatusSeverity.Success
-                });
+                messages.Add($"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}");
+            }
+
+            if (currentPaymentMethodConfig.PaymentLinkTemplate != viewModel.PaymentLinkTemplate)
+            {
+                currentPaymentMethodConfig.PaymentLinkTemplate = viewModel.PaymentLinkTemplate;
+                messages.Add("Payment link template updated");
             }
         }
 

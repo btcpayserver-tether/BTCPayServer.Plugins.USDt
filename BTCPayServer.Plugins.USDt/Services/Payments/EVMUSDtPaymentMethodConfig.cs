@@ -6,6 +6,8 @@ namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
 public class EVMUSDtPaymentMethodConfig : USDtPaymentMethodConfig
 {
+    public string? PaymentLinkTemplate { get; set; }
+
     public async Task<string?> GetOneNotReservedAddress(PaymentMethodId paymentMethodId,
         InvoiceRepository invoiceRepository)
     {
