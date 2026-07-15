@@ -112,6 +112,7 @@ public static class USDtConfigurationProvider
     {
         yield return GetEthUSDtHardcodedConfig(chainName);
         yield return GetPolygonUSDtHardcodedConfig(chainName);
+        yield return GetBscUSDtHardcodedConfig(chainName);
     }
 
     private static EVMUSDtLikeConfigurationItem OverrideWithAppConfig(EVMUSDtLikeConfigurationItem config, IConfiguration configuration)
@@ -244,6 +245,53 @@ public static class USDtConfigurationProvider
                 BlockExplorerLink = "https://amoy.polygonscan.com/tx/{0}",
                 BlockTimeSeconds = 2.0,
                 ChainId = 80002
+            },
+            _ => throw new NotSupportedException()
+        };
+    }
+
+    private static EVMUSDtLikeConfigurationItem GetBscUSDtHardcodedConfig(ChainName chainName)
+    {
+        const string bscLogo = "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22utf-8%22%3F%3E%0A%3Csvg%20id%3D%22Layer_2%22%20data-name%3D%22Layer%202%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20800%20800%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3Cstyle%3E%0A%20%20%20%20%20%20.cls-1%20%7B%0A%20%20%20%20%20%20%20%20fill%3A%20%23009393%3B%0A%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20.cls-1%2C%20.cls-2%20%7B%0A%20%20%20%20%20%20%20%20stroke-width%3A%200px%3B%0A%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20.cls-2%20%7B%0A%20%20%20%20%20%20%20%20fill%3A%20%23fff%3B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%3C%2Fstyle%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Cg%20id%3D%22Layer_1-2%22%20data-name%3D%22Layer%201%22%3E%0A%20%20%20%20%3Cg%3E%0A%20%20%20%20%20%20%3Ccircle%20class%3D%22cls-1%22%20cx%3D%22400%22%20cy%3D%22400%22%20r%3D%22400%22%20style%3D%22fill%3A%20rgb(240%2C%20185%2C%2011)%3B%22%2F%3E%0A%20%20%20%20%20%20%3Cpath%20class%3D%22cls-2%22%20d%3D%22M400.49%2C428.59c68.79%2C0%2C126.28-11.63%2C140.33-27.17-11.93-13.18-55.08-23.56-109.88-26.4v32.83c-9.81.51-20.01.76-30.46.76s-20.65-.25-30.48-.76v-32.83c-54.78%2C2.84-97.95%2C13.22-109.88%2C26.4%2C14.07%2C15.54%2C71.57%2C27.17%2C140.36%2C27.17ZM522.71%2C274.06v45.21h-91.77v31.35c64.46%2C3.35%2C112.83%2C17.13%2C113.19%2C33.62v34.38c-.36%2C16.49-48.73%2C30.24-113.19%2C33.6v76.94h-60.93v-76.94c-64.46-3.35-112.81-17.11-113.17-33.6v-34.38c.36-16.49%2C48.71-30.27%2C113.17-33.62v-31.35h-91.77v-45.21h244.48ZM242.15%2C202.11h322.16c7.7%2C0%2C14.79%2C4.05%2C18.63%2C10.63l93.85%2C161.16c4.86%2C8.36%2C3.42%2C18.91-3.52%2C25.68l-258.34%2C252.18c-8.38%2C8.17-21.84%2C8.17-30.2%2C0L126.71%2C399.92c-7.09-6.94-8.43-17.79-3.2-26.19l100.33-161.49c3.91-6.28%2C10.85-10.12%2C18.32-10.12Z%22%2F%3E%0A%20%20%20%20%3C%2Fg%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cg%20transform%3D%22matrix(0.915545%2C%200%2C%200%2C%200.915545%2C%2051.635639%2C%2010.727954)%22%20style%3D%22%22%3E%0A%20%20%20%20%3Cellipse%20style%3D%22fill%3A%20rgb(255%2C%20255%2C%20255)%3B%20stroke%3A%20rgb(240%2C%20185%2C%2011)%3B%20stroke-width%3A%2011.7645px%3B%22%20cx%3D%22556.816%22%20cy%3D%22602.878%22%20rx%3D%22117.189%22%20ry%3D%22117.189%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%20508.132%20540.345%20L%20556.477%20512.205%20L%20604.821%20540.345%20L%20587.048%20550.741%20L%20556.477%20532.996%20L%20525.907%20550.741%20L%20508.132%20540.345%20Z%20M%20604.821%20575.834%20L%20587.048%20565.439%20L%20556.477%20583.183%20L%20525.907%20565.439%20L%20508.132%20575.834%20L%20508.132%20596.627%20L%20538.702%20614.372%20L%20538.702%20649.861%20L%20556.477%20660.258%20L%20574.25%20649.861%20L%20574.25%20614.372%20L%20604.821%20596.627%20L%20604.821%20575.834%20Z%20M%20604.821%20632.116%20L%20604.821%20611.325%20L%20587.048%20621.721%20L%20587.048%20642.512%20L%20604.821%20632.116%20Z%20M%20617.44%20639.465%20L%20586.87%20657.21%20L%20586.87%20678.003%20L%20635.216%20649.861%20L%20635.216%20593.58%20L%20617.44%20603.976%20L%20617.44%20639.465%20Z%20M%20599.667%20558.09%20L%20617.44%20568.485%20L%20617.44%20589.278%20L%20635.216%20578.883%20L%20635.216%20558.09%20L%20617.44%20547.694%20L%20599.667%20558.09%20Z%20M%20538.702%20664.738%20L%20538.702%20685.53%20L%20556.477%20695.927%20L%20574.25%20685.53%20L%20574.25%20664.738%20L%20556.477%20675.134%20L%20538.702%20664.738%20Z%20M%20508.132%20632.116%20L%20525.907%20642.512%20L%20525.907%20621.721%20L%20508.132%20611.325%20L%20508.132%20632.116%20Z%20M%20538.702%20558.09%20L%20556.477%20568.485%20L%20574.25%20558.09%20L%20556.477%20547.694%20L%20538.702%20558.09%20Z%20M%20495.512%20568.485%20L%20513.287%20558.09%20L%20495.512%20547.694%20L%20477.739%20558.09%20L%20477.739%20578.883%20L%20495.512%20589.278%20L%20495.512%20568.485%20Z%20M%20495.512%20603.976%20L%20477.739%20593.58%20L%20477.739%20649.861%20L%20526.083%20678.003%20L%20526.083%20657.21%20L%20495.512%20639.465%20L%20495.512%20603.976%20Z%22%20fill%3D%22%23F0B90B%22%20style%3D%22stroke-width%3A%2011.7645px%3B%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E";
+
+        return chainName switch
+        {
+            _ when chainName == ChainName.Mainnet => new EVMUSDtLikeConfigurationItem(Constants.BscChainName)
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.BscChainName}",
+                CryptoImagePath = bscLogo,
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_BTC = USD_BTC",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+                Divisibility = 18,
+                SmartContractAddress = "0x55d398326f99059fF775485246999027B3197955",
+                JsonRpcUri = new Uri("https://bsc-dataseed.bnbchain.org"),
+                BlockExplorerLink = "https://bscscan.com/tx/{0}",
+                BlockTimeSeconds = 1.0,
+                ChainId = 56
+            },
+            _ when chainName == ChainName.Testnet => new EVMUSDtLikeConfigurationItem(Constants.BscTestnetChainName)
+            {
+                Currency = Constants.USDtCurrency,
+                CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.BscTestnetChainName}",
+                CryptoImagePath = bscLogo,
+                DefaultRateRules =
+                [
+                    $"{Constants.USDtCurrency}_USD = 1",
+                    $"{Constants.USDtCurrency}_X = {Constants.USDtCurrency}_BTC * BTC_X"
+                ],
+                Divisibility = 18,
+                SmartContractAddress = "0x0000000000000000000000000000000000000000",
+                JsonRpcUri = new Uri("https://bsc-testnet-dataseed.bnbchain.org"),
+                BlockExplorerLink = "https://testnet.bscscan.com/tx/{0}",
+                BlockTimeSeconds = 1.0,
+                ChainId = 97
             },
             _ => throw new NotSupportedException()
         };
