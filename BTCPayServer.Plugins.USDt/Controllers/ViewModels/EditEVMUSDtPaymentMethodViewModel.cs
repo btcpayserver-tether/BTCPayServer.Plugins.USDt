@@ -9,6 +9,9 @@ public class EditEVMUSDtPaymentMethodViewModel
     public string AddressPlaceholder { get; init; } = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
     public string? Address { get; init; }
     public bool Enabled { get; init; }
+    public string? PaymentLinkTemplate { get; init; }
+    // available placeholders {smartContractAddress}, {chainId}, {to}, {amountUnits}, {amount}
+    public string PaymentLinkTemplatePlaceholder = "ethereum:{smartContractAddress}@{chainId}/transfer?address={to}&uint256={amountUnits}";
 
     public EditEVMUSDtPaymentMethodAddressViewModel[] Addresses { get; init; } = [];
 

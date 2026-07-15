@@ -22,7 +22,8 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
             configuration.SmartContractAddress,
             configuration.ChainId,
             configuration.Divisibility,
-            prompt.Calculate().Due);
+            prompt.Calculate().Due,
+            prompt.Details?.Value<string?>("paymentLinkTemplate") ?? "ethereum:{smartContractAddress}@{chainId}/transfer?address={to}&uint256={amountUnits}");
     }
 
     internal static string? BuildPaymentLink(
@@ -30,7 +31,8 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
         string smartContractAddress,
         int chainId,
         int divisibility,
-        decimal due)
+        decimal due,
+        string paymentLinkTemplate)
     {
         if (string.IsNullOrEmpty(destination) ||
             string.IsNullOrWhiteSpace(smartContractAddress) ||
@@ -50,6 +52,11 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
         var amountUnits = BigInteger.Parse(unitsDec.ToString("0", CultureInfo.InvariantCulture));
 
         // EIP-681 ERC-20 transfer link: ethereum:{contract}@{chainId}/transfer?address={to}&uint256={amount}
-        return $"ethereum:{smartContractAddress.ToLowerInvariant()}@{chainId}/transfer?address={to}&uint256={amountUnits}";
+        return paymentLinkTemplate
+            .Replace("{smartContractAddress}", smartContractAddress.ToLowerInvariant())
+            .Replace("{chainId}", chainId.ToString())
+            .Replace("{to}", to)
+            .Replace("{amountUnits}", amountUnits.ToString())
+            .Replace("{amount}", due.ToString(CultureInfo.InvariantCulture));
     }
 }

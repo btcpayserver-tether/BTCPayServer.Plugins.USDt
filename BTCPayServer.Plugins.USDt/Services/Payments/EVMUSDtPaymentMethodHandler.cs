@@ -37,7 +37,11 @@ public class EVMUSDtPaymentMethodHandler(
             throw new PaymentMethodUnavailableException(
                 $"{configurationItem.DisplayName} is not configured with a smart contract address yet");
 
-        var details = new EVMUSDtLikeOnChainPaymentMethodDetails();
+        var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
+        var details = new EVMUSDtLikeOnChainPaymentMethodDetails()
+        {
+            PaymentLinkTemplate = config.PaymentLinkTemplate
+        };
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
                                    .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
                                throw new PaymentMethodUnavailableException(
