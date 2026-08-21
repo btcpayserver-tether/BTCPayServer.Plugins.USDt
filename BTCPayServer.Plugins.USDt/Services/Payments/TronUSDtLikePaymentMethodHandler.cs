@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
-using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -14,7 +13,7 @@ public class TronUSDtLikePaymentMethodHandler(
     TronUSDtLikeConfigurationItem configurationItem,
     TronUSDtRPCProvider tronUSDtRpcProvider,
     CurrencyNameTable currencyNameTable,
-    InvoiceRepository invoiceRepository) : IPaymentMethodHandler
+    USDtTrackedInvoiceProvider trackedInvoiceProvider) : IPaymentMethodHandler
 {
     public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;
 
@@ -39,7 +38,7 @@ public class TronUSDtLikePaymentMethodHandler(
             ExcludeAmountFromPaymentLink = config.ExcludeAmountFromPaymentLink
         };
         var availableAddress = await config
-                                   .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
+                                   .GetOneNotReservedAddress(context.PaymentMethodId, trackedInvoiceProvider) ??
                                throw new PaymentMethodUnavailableException(
                                    "All your TRON addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;

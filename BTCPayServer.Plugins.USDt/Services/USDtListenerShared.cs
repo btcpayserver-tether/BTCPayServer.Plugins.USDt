@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BTCPayServer.Client.Models;
+using Nethereum.Hex.HexTypes;
 
 namespace BTCPayServer.Plugins.USDt.Services;
 
@@ -54,5 +55,22 @@ public static class USDtListenerShared
         }
 
         return false;
+    }
+
+    internal static bool TryGetBlockTimestamp(HexBigInteger? blockTimestamp, out DateTimeOffset timestamp)
+    {
+        timestamp = default;
+        if (blockTimestamp?.Value is not { } value || value <= 0 || value > long.MaxValue)
+            return false;
+
+        try
+        {
+            timestamp = DateTimeOffset.FromUnixTimeSeconds((long)value);
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
     }
 }

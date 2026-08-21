@@ -31,6 +31,10 @@ The default public TRON node is provided for demonstration and testing only. It 
 
 For production, use a private TRON node or a dedicated, authenticated RPC provider with sufficient availability and rate limits for your payment volume. Configure its JSON-RPC endpoint in the plugin's TRON server settings. Providers that use TronGrid authentication can be configured with the `TRON-PRO-API-KEY` header in the same settings.
 
+### Late-payment monitoring
+
+USDt invoice destinations remain reserved and monitored after invoice expiration until BTCPay's monitoring-expiration period ends. This grace period applies to TRON and EVM chains and is controlled by the store's existing invoice monitoring-expiration setting; the plugin does not add a separate setting. Payments discovered after invoice expiration keep BTCPay's `PaidLate` status.
+
 ## 🚀 Installation
 
 Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugins, and restart.

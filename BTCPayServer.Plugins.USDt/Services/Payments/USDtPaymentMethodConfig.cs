@@ -1,9 +1,6 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BTCPayServer.Client.Models;
 using BTCPayServer.Payments;
-using BTCPayServer.Services.Invoices;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
@@ -34,21 +31,17 @@ public class USDtPaymentMethodConfig
     }
 
     public async Task<string?> GetOneNotReservedAddress(PaymentMethodId paymentMethodId,
-        InvoiceRepository invoiceRepository,
-        IEnumerable<InvoiceStatus> trackedStatuses)
+        USDtTrackedInvoiceProvider trackedInvoiceProvider)
     {
-        var allReservedAddresses = await GetReservedAddresses(paymentMethodId, invoiceRepository, trackedStatuses);
+        var allReservedAddresses = await GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
         return Addresses.Except(allReservedAddresses).FirstOrDefault();
     }
 
     public static async Task<string[]> GetReservedAddresses(PaymentMethodId paymentMethodId,
-        InvoiceRepository invoiceRepository,
-        IEnumerable<InvoiceStatus> trackedStatuses)
+        USDtTrackedInvoiceProvider trackedInvoiceProvider)
     {
-        var trackedStatusSet = trackedStatuses.ToHashSet();
-        var pendingInvoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true))
-            .Where(i => trackedStatusSet.Contains(i.Status));
-        return pendingInvoices
+        var trackedInvoices = await trackedInvoiceProvider.GetTrackedInvoices(paymentMethodId);
+        return trackedInvoices
             .Select(i => i.GetPaymentPrompt(paymentMethodId)?.Destination)
             .Where(s => s is not null)
             .Select(s => s!)

@@ -23,7 +23,7 @@ namespace BTCPayServer.Plugins.USDt.Controllers;
 public class GreenfieldTronUSDtLikeStoreController(
     TronUSDtRPCProvider tronUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
-    InvoiceRepository invoiceRepository,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     USDtPluginConfiguration pluginConfiguration) : ControllerBase
 {
 
@@ -46,7 +46,7 @@ public class GreenfieldTronUSDtLikeStoreController(
         var balances =
             await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
-            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
 
         var data = new TronUSDtPaymentMethodInformation
         {

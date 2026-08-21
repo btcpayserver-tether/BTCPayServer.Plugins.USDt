@@ -28,7 +28,7 @@ public class UIEVMUSDtLikeStoreController(
     StoreRepository storeRepository,
     EVMUSDtRPCProvider evmUsdTRpcProvider,
     PaymentMethodHandlerDictionary handlers,
-    InvoiceRepository invoiceRepository,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration,
     EventAggregator eventAggregator) : Controller
@@ -84,7 +84,7 @@ public class UIEVMUSDtLikeStoreController(
         var balances =
             await evmUsdTRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
         var reservedAddresses =
-            await EVMUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await EVMUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
 
         return View(new EditEVMUSDtPaymentMethodViewModel
         {

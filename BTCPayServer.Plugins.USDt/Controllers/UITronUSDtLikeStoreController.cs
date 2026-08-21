@@ -29,7 +29,7 @@ public class UITronUSDtLikeStoreController(
     StoreRepository storeRepository,
     TronUSDtRPCProvider tronUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
-    InvoiceRepository invoiceRepository,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration,
     EventAggregator eventAggregator) : Controller
@@ -87,7 +87,7 @@ public class UITronUSDtLikeStoreController(
             .ToArray();
         var balances = await tronUSDtRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
-            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
+            await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
 
         return View(new EditTronUSDtPaymentMethodViewModel
         {
