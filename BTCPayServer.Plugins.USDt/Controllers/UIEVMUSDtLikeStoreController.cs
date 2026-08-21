@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -78,7 +80,11 @@ public class UIEVMUSDtLikeStoreController(
             {
                 DisplayName = config.DisplayName,
                 ChainDisplayName = config.Chain,
-                Enabled = false
+                Enabled = false,
+                TemplatePreviewSmartContractAddress = config.SmartContractAddress,
+                TemplatePreviewChainId = config.ChainId.ToString(CultureInfo.InvariantCulture),
+                TemplatePreviewAmountUnits = USDtPaymentLinkFormats.ToBaseUnits(12.34m, config.Divisibility)
+                    .ToString(CultureInfo.InvariantCulture)
             });
 
         var balances =
@@ -92,6 +98,14 @@ public class UIEVMUSDtLikeStoreController(
             ChainDisplayName = config.Chain,
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
+            PaymentLinkFormat = USDtPaymentLinkFormats.ResolveEvm(
+                matchedPaymentMethodConfig.PaymentLinkFormat,
+                matchedPaymentMethodConfig.PaymentLinkTemplate),
+            PaymentLinkTemplate = matchedPaymentMethodConfig.PaymentLinkTemplate,
+            TemplatePreviewSmartContractAddress = config.SmartContractAddress,
+            TemplatePreviewChainId = config.ChainId.ToString(CultureInfo.InvariantCulture),
+            TemplatePreviewAmountUnits = USDtPaymentLinkFormats.ToBaseUnits(12.34m, config.Divisibility)
+                .ToString(CultureInfo.InvariantCulture),
             Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
                 new EditEVMUSDtPaymentMethodViewModel.EditEVMUSDtPaymentMethodAddressViewModel
                 {
@@ -108,7 +122,7 @@ public class UIEVMUSDtLikeStoreController(
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
     {
-        if (pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
         var store = StoreData;
@@ -138,7 +152,7 @@ public class UIEVMUSDtLikeStoreController(
     public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditEVMUSDtPaymentMethodViewModel viewModel,
         PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.EVMUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
 
         var store = StoreData;
@@ -190,6 +204,30 @@ public class UIEVMUSDtLikeStoreController(
         }
         else
         {
+            var validationError = ModelState.IsValid
+                ? USDtPaymentLinkFormats.ValidateSelection(
+                    viewModel.PaymentLinkFormat,
+                    viewModel.PaymentLinkTemplate,
+                    true,
+                    USDtPaymentLinkFormats.CreateTemplateValues(
+                        "0x742d35cc6634c0532925a3b844bc454e4438f44e",
+                        12.34m,
+                        configuration.Divisibility,
+                        configuration.SmartContractAddress.ToLowerInvariant(),
+                        configuration.ChainId))
+                : "The selected payment link format is invalid.";
+            if (validationError is not null)
+            {
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = validationError,
+                    Severity = StatusMessageModel.StatusSeverity.Error
+                });
+                return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod),
+                    new { storeId = store.Id, paymentMethodId });
+            }
+
+            var messages = new List<string>();
             if (viewModel.Enabled)
                 currentPaymentMethodConfig.MarkActivated();
 
@@ -197,9 +235,27 @@ public class UIEVMUSDtLikeStoreController(
             {
                 blob.SetExcluded(paymentMethodId, !viewModel.Enabled);
 
+                messages.Add($"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}");
+            }
+
+            var currentFormat = USDtPaymentLinkFormats.ResolveEvm(
+                currentPaymentMethodConfig.PaymentLinkFormat,
+                currentPaymentMethodConfig.PaymentLinkTemplate);
+            var templateChanged = currentPaymentMethodConfig.PaymentLinkTemplate != viewModel.PaymentLinkTemplate;
+            currentPaymentMethodConfig.PaymentLinkFormat = viewModel.PaymentLinkFormat;
+            currentPaymentMethodConfig.PaymentLinkTemplate = viewModel.PaymentLinkTemplate;
+
+            if (currentFormat != viewModel.PaymentLinkFormat)
+                messages.Add("Payment link format updated");
+
+            if (templateChanged)
+                messages.Add("Payment link template updated");
+
+            if (messages.Count > 0)
+            {
                 TempData.SetStatusMessageModel(new StatusMessageModel
                 {
-                    Message = $"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}",
+                    Message = string.Join(". ", messages),
                     Severity = StatusMessageModel.StatusSeverity.Success
                 });
             }

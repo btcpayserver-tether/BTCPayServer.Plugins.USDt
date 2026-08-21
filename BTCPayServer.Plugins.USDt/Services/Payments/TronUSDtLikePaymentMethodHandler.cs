@@ -33,10 +33,7 @@ public class TronUSDtLikePaymentMethodHandler(
             throw new PaymentMethodUnavailableException("Node or wallet not available");
 
         var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
-        var details = new TronUSDtLikeOnChainPaymentMethodDetails
-        {
-            ExcludeAmountFromPaymentLink = config.ExcludeAmountFromPaymentLink
-        };
+        var details = CreatePaymentPromptDetails(config);
         var availableAddress = await config
                                    .GetOneNotReservedAddress(context.PaymentMethodId, trackedInvoiceProvider) ??
                                throw new PaymentMethodUnavailableException(
@@ -44,6 +41,25 @@ public class TronUSDtLikePaymentMethodHandler(
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0;
         context.Prompt.Details = JObject.FromObject(details, Serializer);
+    }
+
+    internal static TronUSDtLikeOnChainPaymentMethodDetails CreatePaymentPromptDetails(
+        TronUSDtPaymentMethodConfig config)
+    {
+        var paymentLinkFormat = USDtPaymentLinkFormats.ResolveTron(
+            config.PaymentLinkFormat,
+            config.PaymentLinkTemplate,
+            config.ExcludeAmountFromPaymentLink);
+        return new TronUSDtLikeOnChainPaymentMethodDetails
+        {
+            ExcludeAmountFromPaymentLink = USDtPaymentLinkFormats.LegacyExcludeAmount(
+                paymentLinkFormat,
+                config.PaymentLinkTemplate),
+            PaymentLinkFormat = paymentLinkFormat,
+            PaymentLinkTemplate = paymentLinkFormat == USDtPaymentLinkFormat.Custom
+                ? config.PaymentLinkTemplate
+                : null
+        };
     }
 
     object IPaymentMethodHandler.ParsePaymentMethodConfig(JToken config)
@@ -73,6 +89,31 @@ public class TronUSDtLikePaymentMethodHandler(
         var previousConfig = validationContext.PreviousConfig is null
             ? null
             : ParsePaymentMethodConfig(validationContext.PreviousConfig);
+        var templateValues = USDtPaymentLinkFormats.CreateTemplateValues(
+            "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+            12.34m,
+            configurationItem.Divisibility,
+            configurationItem.SmartContractAddress);
+        if (config.PaymentLinkFormat is { } format)
+        {
+            var error = USDtPaymentLinkFormats.ValidateSelection(
+                format,
+                config.PaymentLinkTemplate,
+                false,
+                templateValues);
+            if (error is not null)
+                validationContext.ModelState.AddModelError(nameof(config.PaymentLinkFormat), error);
+        }
+        else if (!string.IsNullOrWhiteSpace(config.PaymentLinkTemplate))
+        {
+            var error = USDtPaymentLinkFormats.ValidateSelection(
+                USDtPaymentLinkFormat.Custom,
+                config.PaymentLinkTemplate,
+                false,
+                templateValues);
+            if (error is not null)
+                validationContext.ModelState.AddModelError(nameof(config.PaymentLinkTemplate), error);
+        }
         config.PreserveActivationFrom(previousConfig);
         validationContext.Config = JToken.FromObject(config, Serializer);
         return Task.CompletedTask;

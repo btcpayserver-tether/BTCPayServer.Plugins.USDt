@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
@@ -70,7 +71,7 @@ public class UITronUSDtLikeStoreController(
     [HttpGet("{paymentMethodId}")]
     public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
         
         var excludeFilters = StoreData.GetStoreBlob().GetExcludedPaymentMethods();
@@ -79,7 +80,10 @@ public class UITronUSDtLikeStoreController(
         if (matchedPaymentMethodConfig == null)
             return View(new EditTronUSDtPaymentMethodViewModel
             {
-                Enabled = false
+                Enabled = false,
+                TemplatePreviewSmartContractAddress = configuration.SmartContractAddress,
+                TemplatePreviewAmountUnits = USDtPaymentLinkFormats.ToBaseUnits(12.34m, configuration.Divisibility)
+                    .ToString(CultureInfo.InvariantCulture)
             });
 
         var addresses = matchedPaymentMethodConfig.Addresses
@@ -94,6 +98,14 @@ public class UITronUSDtLikeStoreController(
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
             ExcludeAmountFromPaymentLink = matchedPaymentMethodConfig.ExcludeAmountFromPaymentLink,
+            PaymentLinkFormat = USDtPaymentLinkFormats.ResolveTron(
+                matchedPaymentMethodConfig.PaymentLinkFormat,
+                matchedPaymentMethodConfig.PaymentLinkTemplate,
+                matchedPaymentMethodConfig.ExcludeAmountFromPaymentLink),
+            PaymentLinkTemplate = matchedPaymentMethodConfig.PaymentLinkTemplate,
+            TemplatePreviewSmartContractAddress = configuration.SmartContractAddress,
+            TemplatePreviewAmountUnits = USDtPaymentLinkFormats.ToBaseUnits(12.34m, configuration.Divisibility)
+                .ToString(CultureInfo.InvariantCulture),
             Addresses = addresses.Select(s =>
             {
                 var balance = FindBalance(balances, s);
@@ -126,7 +138,7 @@ public class UITronUSDtLikeStoreController(
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId))
             return NotFound();
 
         var store = StoreData;
@@ -156,7 +168,7 @@ public class UITronUSDtLikeStoreController(
     public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(EditTronUSDtPaymentMethodViewModel viewModel,
         PaymentMethodId paymentMethodId)
     {
-        if (pluginConfiguration.TronUSDtLikeConfigurationItems.ContainsKey(paymentMethodId) == false)
+        if (!pluginConfiguration.TronUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
 
 
@@ -227,6 +239,28 @@ public class UITronUSDtLikeStoreController(
         else
         {
             // This is the "Save" form submission (not the "Add address" form)
+            var validationError = ModelState.IsValid
+                ? USDtPaymentLinkFormats.ValidateSelection(
+                    viewModel.PaymentLinkFormat,
+                    viewModel.PaymentLinkTemplate,
+                    false,
+                    USDtPaymentLinkFormats.CreateTemplateValues(
+                        "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+                        12.34m,
+                        configuration.Divisibility,
+                        configuration.SmartContractAddress))
+                : "The selected payment link format is invalid.";
+            if (validationError is not null)
+            {
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = validationError,
+                    Severity = StatusMessageModel.StatusSeverity.Error
+                });
+                return RedirectToAction(nameof(GetStoreTronUSDtLikePaymentMethod),
+                    new { storeId = store.Id, paymentMethodId });
+            }
+
             var messages = new List<string>();
             if (viewModel.Enabled)
                 currentPaymentMethodConfig.MarkActivated();
@@ -237,14 +271,24 @@ public class UITronUSDtLikeStoreController(
                 messages.Add($"{paymentMethodId} is now {(viewModel.Enabled ? "enabled" : "disabled")}");
             }
 
-            // Update the ExcludeAmountFromPaymentLink setting
-            if (currentPaymentMethodConfig.ExcludeAmountFromPaymentLink != viewModel.ExcludeAmountFromPaymentLink)
+            var currentFormat = USDtPaymentLinkFormats.ResolveTron(
+                currentPaymentMethodConfig.PaymentLinkFormat,
+                currentPaymentMethodConfig.PaymentLinkTemplate,
+                currentPaymentMethodConfig.ExcludeAmountFromPaymentLink);
+            var templateChanged = currentPaymentMethodConfig.PaymentLinkTemplate != viewModel.PaymentLinkTemplate;
+            currentPaymentMethodConfig.PaymentLinkFormat = viewModel.PaymentLinkFormat;
+            currentPaymentMethodConfig.PaymentLinkTemplate = viewModel.PaymentLinkTemplate;
+            currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = USDtPaymentLinkFormats.LegacyExcludeAmount(
+                viewModel.PaymentLinkFormat,
+                viewModel.PaymentLinkTemplate);
+
+            if (currentFormat != viewModel.PaymentLinkFormat)
             {
-                currentPaymentMethodConfig.ExcludeAmountFromPaymentLink = viewModel.ExcludeAmountFromPaymentLink;
-                messages.Add(viewModel.ExcludeAmountFromPaymentLink 
-                    ? "Payment link QR codes will now exclude the amount parameter" 
-                    : "Payment link QR codes will now include the amount parameter");
+                messages.Add("Payment link format updated");
             }
+
+            if (templateChanged)
+                messages.Add("Payment link template updated");
 
             if (messages.Count > 0)
             {
