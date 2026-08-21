@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Security.Claims;
 using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Controllers;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
 using BTCPayServer.Plugins.USDt.Configuration.Tron;
@@ -29,6 +30,33 @@ public class FastTests : UnitTestBase
         Assert.True(TronUSDtAddressHelper.IsValid("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG2XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG3xXyExBkPp9nzdajDZsozEu4BkaSJozs"));
+    }
+
+    [Fact]
+    public void TronStoreSettingsDetectDuplicateSubmittedAddresses()
+    {
+        var duplicate = UITronUSDtLikeStoreController.FindDuplicateAddress(
+        [
+            "TQQvC5DuajPSPnDN9UA535Ts4tC1uCJUvJ",
+            "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d",
+            "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d"
+        ]);
+
+        Assert.Equal("TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d", duplicate);
+    }
+
+    [Fact]
+    public void TronStoreSettingsUsesFirstBalanceForLegacyDuplicates()
+    {
+        const string address = "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d";
+
+        var balance = UITronUSDtLikeStoreController.FindBalance(
+        [
+            (address, 10m),
+            (address, 20m)
+        ], address);
+
+        Assert.Equal(10m, balance);
     }
 
     [Fact]

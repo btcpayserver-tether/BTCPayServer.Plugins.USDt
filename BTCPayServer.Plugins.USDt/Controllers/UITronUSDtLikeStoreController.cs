@@ -82,8 +82,10 @@ public class UITronUSDtLikeStoreController(
                 Enabled = false
             });
 
-        var balances =
-            await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+        var addresses = matchedPaymentMethodConfig.Addresses
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var balances = await tronUSDtRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
             await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, invoiceRepository);
 
@@ -92,16 +94,32 @@ public class UITronUSDtLikeStoreController(
             Enabled = !excludeFilters.Match(paymentMethodId),
             Address = "",
             ExcludeAmountFromPaymentLink = matchedPaymentMethodConfig.ExcludeAmountFromPaymentLink,
-            Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
-                new EditTronUSDtPaymentMethodViewModel.EditTronUSDtPaymentMethodAddressViewModel
+            Addresses = addresses.Select(s =>
+            {
+                var balance = FindBalance(balances, s);
+                return new EditTronUSDtPaymentMethodViewModel.EditTronUSDtPaymentMethodAddressViewModel
                 {
                     Available = reservedAddresses.Contains(s) == false,
-                    Balance = balances.Single(x => x.Item1 == s).Item2 == null
+                    Balance = balance == null
                         ? "N/A"
-                        : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae"),
+                        : displayFormatter.Currency(balance.Value, "USD\u20ae"),
                     Value = s
-                }).ToArray()
+                };
+            }).ToArray()
         });
+    }
+
+    internal static decimal? FindBalance(IEnumerable<(string Address, decimal? Balance)> balances, string address)
+    {
+        return balances.FirstOrDefault(balance => balance.Address == address).Balance;
+    }
+
+    internal static string? FindDuplicateAddress(IEnumerable<string> addresses)
+    {
+        return addresses
+            .GroupBy(address => address, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Skip(1).Any())?
+            .Key;
     }
 
     [HttpPost("{paymentMethodId}/addresses/{address}/delete")]
@@ -149,9 +167,26 @@ public class UITronUSDtLikeStoreController(
 
         if (string.IsNullOrEmpty(viewModel.Address) == false)
         {
-            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            var submittedAddresses = viewModel.Address
+                .Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(TronUSDtAddressHelper.IsValid)
-                .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
+                .ToArray();
+            var duplicateAddress = FindDuplicateAddress(submittedAddresses);
+
+            if (duplicateAddress is not null)
+            {
+                TempData.SetStatusMessageModel(new StatusMessageModel
+                {
+                    Message = $"Duplicate address: {duplicateAddress}. Remove duplicate entries and try again.",
+                    Severity = StatusMessageModel.StatusSeverity.Error
+                });
+
+                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
+            }
+
+            var addresses = submittedAddresses
+                .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false)
+                .ToArray();
             
             if(addresses.Any() == false)
             {
