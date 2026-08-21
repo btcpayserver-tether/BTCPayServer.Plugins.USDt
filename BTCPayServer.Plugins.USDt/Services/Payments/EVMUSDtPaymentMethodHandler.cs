@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
-using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -14,7 +13,7 @@ public class EVMUSDtPaymentMethodHandler(
     EVMUSDtLikeConfigurationItem configurationItem,
     EVMUSDtRPCProvider rpcProvider,
     CurrencyNameTable currencyNameTable,
-    InvoiceRepository invoiceRepository) : IPaymentMethodHandler
+    USDtTrackedInvoiceProvider trackedInvoiceProvider) : IPaymentMethodHandler
 {
     public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;
 
@@ -39,7 +38,7 @@ public class EVMUSDtPaymentMethodHandler(
 
         var details = new EVMUSDtLikeOnChainPaymentMethodDetails();
         var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
-                                   .GetOneNotReservedAddress(context.PaymentMethodId, invoiceRepository) ??
+                                   .GetOneNotReservedAddress(context.PaymentMethodId, trackedInvoiceProvider) ??
                                throw new PaymentMethodUnavailableException(
                                    $"All your {configurationItem.Chain} addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;

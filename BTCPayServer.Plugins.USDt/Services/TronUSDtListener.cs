@@ -20,21 +20,21 @@ using Nethereum.RPC.Eth.DTOs;
 namespace BTCPayServer.Plugins.USDt.Services;
 
 public class TronUSDtListener(
-    InvoiceRepository invoiceRepository,
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     TronUSDtRPCProvider tronUSDtRpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
     USDtChainActivationService activationService,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     ILogger<TronUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService)
     : USDtListener<TronUSDtLikeConfigurationItem, TronUSDtLikePaymentData>(
-        invoiceRepository,
         settingsRepository,
         eventAggregator,
         tronUSDtRpcProvider,
         activationService,
+        trackedInvoiceProvider,
         logger,
         handlers,
         paymentService)

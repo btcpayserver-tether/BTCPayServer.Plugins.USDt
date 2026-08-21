@@ -22,11 +22,11 @@ using Nethereum.Web3;
 namespace BTCPayServer.Plugins.USDt.Services;
 
 public abstract class USDtListener<TConfigurationItem, TPaymentData>(
-    InvoiceRepository invoiceRepository,
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     USDtRPCProvider<TConfigurationItem> rpcProvider,
     USDtChainActivationService activationService,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     ILogger logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService) : IHostedService
@@ -127,7 +127,10 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if (!await HasTrackedInvoices(paymentMethodId, stoppingToken))
+                    var invoices = (await trackedInvoiceProvider.GetTrackedInvoices(paymentMethodId, stoppingToken))
+                        .Where(invoice => invoice.GetPaymentPrompt(paymentMethodId)?.Activated is true)
+                        .ToArray();
+                    if (invoices.Length == 0)
                     {
                         var lastBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
                         if (lastBlockNumber.Value > listenerState.LastBlockHeight)
@@ -162,7 +165,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
                         if (block != null)
                         {
-                            await OnNewBlockToIndex(paymentMethodId, block, stoppingToken);
+                            await OnNewBlockToIndex(paymentMethodId, invoices, block, stoppingToken);
                             logger.LogInformation("New block indexed for {Listener} {BlockNumber}",
                                 logContext, block.Number);
 
@@ -236,12 +239,6 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         return await settingsRepository.GetSettingAsync<EVMBasedListenerState>(GetListenerStateSettingKey(config));
     }
 
-    private async Task<bool> HasTrackedInvoices(PaymentMethodId paymentMethodId, CancellationToken stoppingToken)
-    {
-        return (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true, stoppingToken))
-            .Any(i => USDtListenerShared.StatusToTrack.Contains(i.Status));
-    }
-
     private Task ReceivedPayment(InvoiceEntity invoice, PaymentEntity payment)
     {
         logger.LogInformation(
@@ -274,6 +271,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
             .ToDictionary(group => group.Key, group => group.First().Invoice);
 
         var matches = await GetTransfersAsync(paymentMethodId, block, invoicesPerAddress, stoppingToken);
+        var paymentTimestamp = GetPaymentTimestamp(block);
         foreach (var match in matches)
         {
             if (!invoicesPerAddress.TryGetValue(match.DestinationKey, out var invoice))
@@ -287,6 +285,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                 match.TransactionId,
                 0,
                 (long)block.Number.Value,
+                paymentTimestamp,
                 invoice);
         }
 
@@ -325,10 +324,11 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
     private async Task OnNewBlockToIndex(
         PaymentMethodId paymentMethodId,
+        InvoiceEntity[] invoices,
         BlockWithTransactions block,
         CancellationToken stoppingToken)
     {
-        await UpdateAnyPendingPayment(paymentMethodId, block, stoppingToken);
+        await UpdatePaymentStates(paymentMethodId, invoices, block, stoppingToken);
     }
 
     private async Task HandlePaymentData(
@@ -339,6 +339,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         string txId,
         int confirmations,
         long blockHeight,
+        DateTimeOffset paymentTimestamp,
         InvoiceEntity invoice)
     {
         var config = GetConfig(paymentMethodId);
@@ -353,7 +354,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
         {
             Status = details.PaymentConfirmed(invoice.SpeedPolicy) ? PaymentStatus.Settled : PaymentStatus.Processing,
             Amount = totalAmountBigDecimal,
-            Created = DateTimeOffset.UtcNow,
+            Created = paymentTimestamp,
             Id = txId,
             Currency = config.Currency,
             InvoiceDataId = invoice.Id
@@ -364,20 +365,16 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
             await ReceivedPayment(invoice, payment);
     }
 
-    private async Task UpdateAnyPendingPayment(
-        PaymentMethodId paymentMethodId,
-        BlockWithTransactions block,
-        CancellationToken stoppingToken)
+    private DateTimeOffset GetPaymentTimestamp(BlockWithTransactions block)
     {
-        var invoices = (await invoiceRepository.GetMonitoredInvoices(paymentMethodId, true, stoppingToken))
-            .Where(i => USDtListenerShared.StatusToTrack.Contains(i.Status))
-            .Where(i => i.GetPaymentPrompt(paymentMethodId)?.Activated is true)
-            .ToArray();
+        var now = DateTimeOffset.UtcNow;
+        if (USDtListenerShared.TryGetBlockTimestamp(block.Timestamp, out var timestamp))
+            return timestamp;
 
-        if (invoices.Length == 0)
-            return;
-
-        await UpdatePaymentStates(paymentMethodId, invoices, block, stoppingToken);
+        logger.LogWarning(
+            "Block {BlockNumber} did not contain a valid Unix timestamp; using the current time for detected payments",
+            block.Number);
+        return now;
     }
 
     private static IEnumerable<PaymentEntity> GetPendingPayments(InvoiceEntity invoice, PaymentMethodId paymentMethodId)

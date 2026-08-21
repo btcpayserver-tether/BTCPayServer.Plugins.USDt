@@ -21,21 +21,21 @@ using Nethereum.RPC.Eth.DTOs;
 namespace BTCPayServer.Plugins.USDt.Services;
 
 public class EVMUSDtListener(
-    InvoiceRepository invoiceRepository,
     ISettingsRepository settingsRepository,
     EventAggregator eventAggregator,
     EVMUSDtRPCProvider rpcProvider,
     USDtPluginConfiguration usdtPluginConfiguration,
     USDtChainActivationService activationService,
+    USDtTrackedInvoiceProvider trackedInvoiceProvider,
     ILogger<EVMUSDtListener> logger,
     PaymentMethodHandlerDictionary handlers,
     PaymentService paymentService)
     : USDtListener<EVMUSDtLikeConfigurationItem, EVMUSDtPaymentData>(
-        invoiceRepository,
         settingsRepository,
         eventAggregator,
         rpcProvider,
         activationService,
+        trackedInvoiceProvider,
         logger,
         handlers,
         paymentService)

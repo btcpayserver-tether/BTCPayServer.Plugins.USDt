@@ -1,6 +1,7 @@
 using System.Numerics;
 using Nethereum.JsonRpc.Client;
 using System.Security.Claims;
+using BTCPayServer.Data;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Controllers;
@@ -10,8 +11,10 @@ using BTCPayServer.Plugins.USDt.Configuration.Tron;
 using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using BTCPayServer.Client.Models;
+using BTCPayServer.Services.Invoices;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Configuration;
+using Nethereum.Hex.HexTypes;
 using NBitcoin;
 using NBXplorer;
 using Newtonsoft.Json.Linq;
@@ -71,6 +74,119 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public async Task TrackedInvoicesMergePendingAndExpiredWithinGraceAfterRestart()
+    {
+        var now = DateTimeOffset.Parse("2026-08-21T12:00:00Z");
+        var paymentMethodId = new PaymentMethodId("USDT-TRON");
+        var source = new TestInvoiceSource
+        {
+            MonitoredInvoices =
+            [
+                CreateInvoice("new", InvoiceStatus.New, now.AddHours(1), paymentMethodId, "TNew"),
+                CreateInvoice("processing", InvoiceStatus.Processing, now.AddHours(1), paymentMethodId, "TProcessing")
+            ],
+            ExpiredInvoices =
+            [
+                CreateInvoice("grace", InvoiceStatus.Expired, now.AddMinutes(10), paymentMethodId, "TGrace"),
+                CreateInvoice("past-grace", InvoiceStatus.Expired, now.AddSeconds(-1), paymentMethodId, "TPast"),
+                CreateInvoice("settled", InvoiceStatus.Settled, now.AddMinutes(10), paymentMethodId, "TSettled"),
+                CreateInvoice("invalid", InvoiceStatus.Invalid, now.AddMinutes(10), paymentMethodId, "TInvalid")
+            ]
+        };
+        var provider = new USDtTrackedInvoiceProvider(source, new TestTimeProvider(now));
+
+        var tracked = await provider.GetTrackedInvoices(paymentMethodId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["grace", "new", "processing"], tracked.Select(invoice => invoice.Id).Order().ToArray());
+        Assert.Equal(now - USDtTrackedInvoiceProvider.BootstrapLookback, source.ExpiredStartDate);
+        Assert.Equal(1, source.ExpiredQueryCount);
+    }
+
+    [Fact]
+    public async Task TrackedInvoiceRefreshReleasesSettledInvoices()
+    {
+        var now = DateTimeOffset.Parse("2026-08-21T12:00:00Z");
+        var paymentMethodId = new PaymentMethodId("USDT-TRON");
+        var timeProvider = new TestTimeProvider(now);
+        var source = new TestInvoiceSource
+        {
+            MonitoredInvoices =
+            [
+                CreateInvoice("invoice", InvoiceStatus.New, now.AddHours(1), paymentMethodId, "TAddress")
+            ]
+        };
+        var provider = new USDtTrackedInvoiceProvider(source, timeProvider);
+        Assert.Single(await provider.GetTrackedInvoices(paymentMethodId, TestContext.Current.CancellationToken));
+
+        source.MonitoredInvoices = [];
+        source.RefreshedInvoices =
+        [
+            CreateInvoice("invoice", InvoiceStatus.Settled, now.AddHours(1), paymentMethodId, "TAddress")
+        ];
+        timeProvider.UtcNow += USDtTrackedInvoiceProvider.RefreshInterval;
+
+        Assert.Empty(await provider.GetTrackedInvoices(paymentMethodId, TestContext.Current.CancellationToken));
+        Assert.Equal(1, source.RefreshQueryCount);
+    }
+
+    [Fact]
+    public async Task AddressReservationEndsAtMonitoringExpiration()
+    {
+        var now = DateTimeOffset.Parse("2026-08-21T12:00:00Z");
+        var paymentMethodId = new PaymentMethodId("USDT-TRON");
+        var timeProvider = new TestTimeProvider(now);
+        var source = new TestInvoiceSource
+        {
+            ExpiredInvoices =
+            [
+                CreateInvoice("late", InvoiceStatus.Expired, now.AddMinutes(5), paymentMethodId, "TReserved")
+            ]
+        };
+        var provider = new USDtTrackedInvoiceProvider(source, timeProvider);
+
+        Assert.Equal(
+            ["TReserved"],
+            await USDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, provider));
+
+        timeProvider.UtcNow = now.AddMinutes(5);
+
+        Assert.Empty(await USDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, provider));
+    }
+
+    [Fact]
+    public async Task ExpiredInvoiceRetainsPaidLateStatusWhileTracked()
+    {
+        var now = DateTimeOffset.Parse("2026-08-21T12:00:00Z");
+        var paymentMethodId = new PaymentMethodId("USDT-TRON");
+        var invoice = CreateInvoice(
+            "paid-late",
+            InvoiceStatus.Expired,
+            now.AddMinutes(5),
+            paymentMethodId,
+            "TLate");
+        invoice.ExceptionStatus = InvoiceExceptionStatus.PaidLate;
+        var source = new TestInvoiceSource { ExpiredInvoices = [invoice] };
+        var provider = new USDtTrackedInvoiceProvider(source, new TestTimeProvider(now));
+
+        var tracked = Assert.Single(
+            await provider.GetTrackedInvoices(paymentMethodId, TestContext.Current.CancellationToken));
+
+        Assert.Equal(InvoiceStatus.Expired, tracked.Status);
+        Assert.Equal(InvoiceExceptionStatus.PaidLate, tracked.ExceptionStatus);
+    }
+
+    [Fact]
+    public void BlockTimestampUsesUnixTimeAndRejectsUnavailableValues()
+    {
+        var expected = DateTimeOffset.Parse("2023-11-14T22:13:20Z");
+
+        Assert.True(USDtListenerShared.TryGetBlockTimestamp(new HexBigInteger(1_700_000_000), out var timestamp));
+        Assert.Equal(expected, timestamp);
+        Assert.False(USDtListenerShared.TryGetBlockTimestamp(null, out _));
+        Assert.False(USDtListenerShared.TryGetBlockTimestamp(new HexBigInteger(0), out _));
+    }
+
+    [Fact]
     public void TronStoreSettingsDetectDuplicateSubmittedAddresses()
     {
         var duplicate = UITronUSDtLikeStoreController.FindDuplicateAddress(
@@ -105,7 +221,7 @@ public class FastTests : UnitTestBase
             12.34m,
             false);
 
-        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
+        Assert.Equal("tron:TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
     }
 
     [Fact]
@@ -116,7 +232,7 @@ public class FastTests : UnitTestBase
             12.34m,
             true);
 
-        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs", result);
+        Assert.Equal("tron:TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs", result);
     }
 
     [Fact]
@@ -471,6 +587,75 @@ public class FastTests : UnitTestBase
         public static long GetHeadLag(EVMUSDtLikeConfigurationItem configuration)
         {
             return new TestableEvmListener().GetHeadLagBlocks(configuration);
+        }
+    }
+
+    private static InvoiceEntity CreateInvoice(
+        string id,
+        InvoiceStatus status,
+        DateTimeOffset monitoringExpiration,
+        PaymentMethodId paymentMethodId,
+        string destination)
+    {
+        var invoice = new InvoiceEntity
+        {
+            Id = id,
+            Status = status,
+            MonitoringExpiration = monitoringExpiration,
+            Currency = "USD",
+            Price = 1m
+        };
+        invoice.SetPaymentPrompt(paymentMethodId, new PaymentPrompt
+        {
+            Currency = "USDt",
+            Destination = destination,
+            Divisibility = 6
+        });
+        return invoice;
+    }
+
+    private sealed class TestInvoiceSource : IUSDtInvoiceSource
+    {
+        public InvoiceEntity[] MonitoredInvoices { get; set; } = [];
+        public InvoiceEntity[] ExpiredInvoices { get; set; } = [];
+        public InvoiceEntity[] RefreshedInvoices { get; set; } = [];
+        public DateTimeOffset? ExpiredStartDate { get; private set; }
+        public int ExpiredQueryCount { get; private set; }
+        public int RefreshQueryCount { get; private set; }
+
+        public Task<InvoiceEntity[]> GetMonitoredInvoices(
+            PaymentMethodId paymentMethodId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(MonitoredInvoices);
+        }
+
+        public Task<InvoiceEntity[]> GetExpiredInvoicesSince(
+            DateTimeOffset startDate,
+            CancellationToken cancellationToken)
+        {
+            ExpiredStartDate = startDate;
+            ExpiredQueryCount++;
+            return Task.FromResult(ExpiredInvoices);
+        }
+
+        public Task<InvoiceEntity[]> GetInvoices(
+            string[] invoiceIds,
+            CancellationToken cancellationToken)
+        {
+            RefreshQueryCount++;
+            return Task.FromResult(
+                RefreshedInvoices.Where(invoice => invoiceIds.Contains(invoice.Id)).ToArray());
+        }
+    }
+
+    private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public DateTimeOffset UtcNow { get; set; } = utcNow;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return UtcNow;
         }
     }
 
