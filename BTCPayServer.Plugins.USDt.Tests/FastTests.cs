@@ -1,4 +1,5 @@
 using System.Numerics;
+using Nethereum.JsonRpc.Client;
 using System.Security.Claims;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
@@ -34,6 +35,39 @@ public class FastTests : UnitTestBase
         Assert.True(TronUSDtAddressHelper.IsValid("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG2XXyExBkPp9nzdajDZsozEu4BkaSJozs"));
         Assert.False(TronUSDtAddressHelper.IsValid("TG3xXyExBkPp9nzdajDZsozEu4BkaSJozs"));
+    }
+
+    [Fact]
+    public void TronPollingUsesConfiguredBlockTime()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(3), USDtListenerShared.GetBlockPollingDelay(3));
+        Assert.Equal(TimeSpan.FromSeconds(1), USDtListenerShared.GetBlockPollingDelay(0.25));
+    }
+
+    [Fact]
+    public void RateLimitBackoffIsJitteredAndCapped()
+    {
+        Assert.Equal(USDtListenerShared.InitialRateLimitBackoffMs, 5_000);
+        Assert.Equal(5_000, USDtListenerShared.CalculateRateLimitDelayMs(5_000, 0));
+        Assert.Equal(5_500, USDtListenerShared.CalculateRateLimitDelayMs(5_000, 0.5));
+        Assert.Equal(6_000, USDtListenerShared.CalculateRateLimitDelayMs(5_000, 1));
+        Assert.Equal(60_000, USDtListenerShared.CalculateRateLimitDelayMs(60_000, 1));
+
+        Assert.Equal(10_000, USDtListenerShared.GetNextRateLimitBackoffMs(5_000));
+        Assert.Equal(60_000, USDtListenerShared.GetNextRateLimitBackoffMs(40_000));
+        Assert.Equal(60_000, USDtListenerShared.GetNextRateLimitBackoffMs(60_000));
+    }
+
+    [Theory]
+    [InlineData("Response status code does not indicate success: 429 (Too Many Requests).", true)]
+    [InlineData("403 Forbidden: The key exceeds the frequency limit", true)]
+    [InlineData("403 Forbidden: invalid API key", false)]
+    [InlineData("500 Internal Server Error", false)]
+    public void RateLimitDetectionIsSelective(string message, bool expected)
+    {
+        var exception = new RpcClientUnknownException("RPC failure", new HttpRequestException(message));
+
+        Assert.Equal(expected, USDtListenerShared.IsRateLimitException(exception));
     }
 
     [Fact]

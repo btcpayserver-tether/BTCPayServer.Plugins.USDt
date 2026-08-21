@@ -51,6 +51,13 @@ public class TronUSDtListener(
 
     protected override string RateLimitNodeName => "Tron";
 
+    protected override bool UseExponentialRateLimitBackoff => true;
+
+    protected override TimeSpan GetHeadPollingDelay(TronUSDtLikeConfigurationItem configurationItem)
+    {
+        return USDtListenerShared.GetBlockPollingDelay(configurationItem.BlockTimeSeconds);
+    }
+
     protected override long CreateInitialLastBlockHeight(HexBigInteger latestBlockNumber)
     {
         return (long)latestBlockNumber.Value;
