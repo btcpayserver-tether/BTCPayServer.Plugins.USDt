@@ -54,6 +54,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
     protected virtual bool UseExponentialRateLimitBackoff => false;
     protected virtual long CreateInitialLastBlockHeight(HexBigInteger latestBlockNumber) => (long)latestBlockNumber.Value - 1;
     protected virtual long GetHeadLagBlocks(TConfigurationItem configurationItem) => 0;
+    protected virtual TimeSpan GetHeadPollingDelay(TConfigurationItem configurationItem) => TimeSpan.FromSeconds(1);
     protected virtual LogLevel EmptyQueueBlockAdvanceLogLevel => LogLevel.Information;
     protected virtual IDisposable? BeginLoggingScope(PaymentMethodId paymentMethodId) => null;
     protected virtual string NormalizeDestinationKey(string destination) => destination.ToLowerInvariant();
@@ -84,7 +85,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
     {
         var paymentMethodId = configurationItem.GetPaymentMethodId();
         var logContext = GetLogContext(configurationItem);
-        var rateLimitBackoffMs = 5_000;
+        var rateLimitBackoffMs = USDtListenerShared.InitialRateLimitBackoffMs;
         while (!stoppingToken.IsCancellationRequested)
             try
             {
@@ -151,7 +152,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                             logger.LogDebug(
                                 "Waiting for a safe indexing head on {Listener}, next={NextBlockNumber}, latest={LatestBlockNumber}, lag={HeadLagBlocks}",
                                 logContext, nextBlockHeight, latestBlockNumber.Value, safeHeadLagBlocks);
-                            await Task.Delay(1_000, stoppingToken);
+                            await Task.Delay(GetHeadPollingDelay(configurationItem), stoppingToken);
                             continue;
                         }
 
@@ -172,12 +173,12 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                             logger.LogInformation(
                                 "Block not present on node yet for {Listener} {BlockNumber}",
                                 logContext, listenerState.LastBlockHeight);
-                            await Task.Delay(1_000, stoppingToken);
+                            await Task.Delay(GetHeadPollingDelay(configurationItem), stoppingToken);
                         }
                     }
 
                     await SetTrackingState(configurationItem, listenerState);
-                    rateLimitBackoffMs = 5_000;
+                    rateLimitBackoffMs = USDtListenerShared.InitialRateLimitBackoffMs;
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -197,16 +198,18 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                     logContext);
                 await Task.Delay(5_000, stoppingToken);
             }
-            catch (RpcClientUnknownException e) when (e.InnerException?.Message?.Contains("429 (Too Many Requests)") ==
-                                                      true)
+            catch (RpcClientUnknownException e) when (USDtListenerShared.IsRateLimitException(e))
             {
                 if (UseExponentialRateLimitBackoff)
                 {
+                    var retryDelayMs = USDtListenerShared.CalculateRateLimitDelayMs(
+                        rateLimitBackoffMs,
+                        Random.Shared.NextDouble());
                     logger.LogWarning(
                         "Rate limit exceeded while indexing {Listener}, use a {NodeName} node with higher limits if possible. Retrying in {DelayMs} ms",
-                        logContext, RateLimitNodeName, rateLimitBackoffMs);
-                    await Task.Delay(rateLimitBackoffMs, stoppingToken);
-                    rateLimitBackoffMs = Math.Min(rateLimitBackoffMs * 2, 60_000);
+                        logContext, RateLimitNodeName, retryDelayMs);
+                    await Task.Delay(retryDelayMs, stoppingToken);
+                    rateLimitBackoffMs = USDtListenerShared.GetNextRateLimitBackoffMs(rateLimitBackoffMs);
                 }
                 else
                 {
