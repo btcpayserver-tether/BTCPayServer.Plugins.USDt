@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Security.Claims;
 using BTCPayServer.Payments;
+using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Controllers;
 using BTCPayServer.Plugins.USDt.Services;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
@@ -9,6 +10,9 @@ using BTCPayServer.Plugins.USDt.Services.Payments;
 using BTCPayServer.Tests;
 using BTCPayServer.Client.Models;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
+using NBXplorer;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -208,6 +212,27 @@ public class FastTests : UnitTestBase
 
         Assert.False(invalidConfig.HasValidSmartContractAddress());
         Assert.True(validConfig.HasValidSmartContractAddress());
+    }
+
+    [Fact]
+    public void RegtestUsesExternalChainTestnetDefaults()
+    {
+        var networkProvider = new NBXplorerNetworkProvider(ChainName.Regtest);
+        var configuration = new ConfigurationBuilder().Build();
+
+        var tronConfiguration =
+            USDtConfigurationProvider.GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration);
+        Assert.Equal(new Uri("https://nile.trongrid.io/jsonrpc"), tronConfiguration.JsonRpcUri);
+        Assert.Equal("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj", tronConfiguration.SmartContractAddress);
+
+        var evmConfigurations =
+            USDtConfigurationProvider.GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration)
+                .Values
+                .ToDictionary(config => config.Chain);
+
+        Assert.Equal(11155111, evmConfigurations[Constants.SepoliaChainName].ChainId);
+        Assert.Equal(80002, evmConfigurations[Constants.AmoyChainName].ChainId);
+        Assert.Equal(97, evmConfigurations[Constants.BscTestnetChainName].ChainId);
     }
 
     [Fact]
