@@ -25,6 +25,12 @@ The plugin extends the functionality of BTCPay Server, a self-hosted cryptocurre
 - BTCPay Server: Make sure you have a running instance of BTCPay Server. You can find more information and installation instructions [here](https://docs.btcpayserver.org/).
 - A compatible wallet for each chain you want to use (e.g., Ledger, MetaMask, TrustWallet...) to generate and manage addresses for receiving USDt payments.
 
+### TRON node requirements
+
+The default public TRON node is provided for demonstration and testing only. It is not suitable for production because its availability and rate limits are outside your control and may delay payment detection.
+
+For production, use a private TRON node or a dedicated, authenticated RPC provider with sufficient availability and rate limits for your payment volume. Configure its JSON-RPC endpoint in the plugin's TRON server settings. Providers that use TronGrid authentication can be configured with the `TRON-PRO-API-KEY` header in the same settings.
+
 ## 🚀 Installation
 
 Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugins, and restart.
