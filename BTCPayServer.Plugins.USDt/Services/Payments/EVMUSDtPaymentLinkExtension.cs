@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using System.Numerics;
 using BTCPayServer.Payments;
 using BTCPayServer.Plugins.USDt.Configuration;
 using BTCPayServer.Plugins.USDt.Configuration.EVM;
@@ -17,12 +16,18 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
     public string? GetPaymentLink(PaymentPrompt prompt, IUrlHelper? urlHelper)
     {
         var configuration = pluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId];
+        var template = prompt.Details?.Value<string?>("paymentLinkTemplate");
+        var format = USDtPaymentLinkFormats.ResolveEvm(
+            prompt.Details?.Value<USDtPaymentLinkFormat?>("paymentLinkFormat"),
+            template);
         return BuildPaymentLink(
             prompt.Destination,
             configuration.SmartContractAddress,
             configuration.ChainId,
             configuration.Divisibility,
-            prompt.Calculate().Due);
+            prompt.Calculate().Due,
+            format,
+            template);
     }
 
     internal static string? BuildPaymentLink(
@@ -32,6 +37,25 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
         int divisibility,
         decimal due)
     {
+        return BuildPaymentLink(
+            destination,
+            smartContractAddress,
+            chainId,
+            divisibility,
+            due,
+            USDtPaymentLinkFormat.Standard,
+            null);
+    }
+
+    internal static string? BuildPaymentLink(
+        string? destination,
+        string smartContractAddress,
+        int chainId,
+        int divisibility,
+        decimal due,
+        USDtPaymentLinkFormat format,
+        string? template)
+    {
         if (string.IsNullOrEmpty(destination) ||
             string.IsNullOrWhiteSpace(smartContractAddress) ||
             string.Equals(smartContractAddress, EVMUSDtLikeConfigurationItem.UnconfiguredSmartContractAddress,
@@ -39,17 +63,26 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
             return null;
 
         var to = destination.ToLowerInvariant();
+        var contract = smartContractAddress.ToLowerInvariant();
 
-        // Convert due (decimal) to base units using decimals, truncating (floor) to avoid overstating value
-        // scale = 10^decimals using decimal math to preserve precision
-        var scale = 1m;
-        for (var i = 0; i < divisibility; i++) scale *= 10m;
-        var scaled = due * scale;
-        if (scaled < 0) scaled = 0; // no negative amounts
-        var unitsDec = decimal.Truncate(scaled);
-        var amountUnits = BigInteger.Parse(unitsDec.ToString("0", CultureInfo.InvariantCulture));
+        if (format == USDtPaymentLinkFormat.AddressOnly)
+            return to;
+
+        if (format == USDtPaymentLinkFormat.Custom)
+        {
+            var values = USDtPaymentLinkFormats.CreateTemplateValues(
+                to,
+                due,
+                divisibility,
+                contract,
+                chainId);
+            if (USDtPaymentLinkFormats.TryRenderTemplate(template, true, values, out var rendered, out _))
+                return rendered;
+        }
+
+        var amountUnits = USDtPaymentLinkFormats.ToBaseUnits(due, divisibility);
 
         // EIP-681 ERC-20 transfer link: ethereum:{contract}@{chainId}/transfer?address={to}&uint256={amount}
-        return $"ethereum:{smartContractAddress.ToLowerInvariant()}@{chainId}/transfer?address={to}&uint256={amountUnits}";
+        return $"ethereum:{contract}@{chainId.ToString(CultureInfo.InvariantCulture)}/transfer?address={to}&uint256={amountUnits.ToString(CultureInfo.InvariantCulture)}";
     }
 }

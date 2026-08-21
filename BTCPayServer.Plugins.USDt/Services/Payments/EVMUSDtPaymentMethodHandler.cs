@@ -36,14 +36,29 @@ public class EVMUSDtPaymentMethodHandler(
             throw new PaymentMethodUnavailableException(
                 $"{configurationItem.DisplayName} is not configured with a smart contract address yet");
 
-        var details = new EVMUSDtLikeOnChainPaymentMethodDetails();
-        var availableAddress = await ParsePaymentMethodConfig(context.PaymentMethodConfig)
+        var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
+        var details = CreatePaymentPromptDetails(config);
+        var availableAddress = await config
                                    .GetOneNotReservedAddress(context.PaymentMethodId, trackedInvoiceProvider) ??
                                throw new PaymentMethodUnavailableException(
                                    $"All your {configurationItem.Chain} addresses are currently waiting payment");
         context.Prompt.Destination = availableAddress;
         context.Prompt.PaymentMethodFee = 0;
         context.Prompt.Details = JObject.FromObject(details, Serializer);
+    }
+
+    internal static EVMUSDtLikeOnChainPaymentMethodDetails CreatePaymentPromptDetails(EVMUSDtPaymentMethodConfig config)
+    {
+        var paymentLinkFormat = USDtPaymentLinkFormats.ResolveEvm(
+            config.PaymentLinkFormat,
+            config.PaymentLinkTemplate);
+        return new EVMUSDtLikeOnChainPaymentMethodDetails
+        {
+            PaymentLinkFormat = paymentLinkFormat,
+            PaymentLinkTemplate = paymentLinkFormat == USDtPaymentLinkFormat.Custom
+                ? config.PaymentLinkTemplate
+                : null
+        };
     }
 
     object IPaymentMethodHandler.ParsePaymentMethodConfig(JToken config)
@@ -73,6 +88,32 @@ public class EVMUSDtPaymentMethodHandler(
         var previousConfig = validationContext.PreviousConfig is null
             ? null
             : ParsePaymentMethodConfig(validationContext.PreviousConfig);
+        var templateValues = USDtPaymentLinkFormats.CreateTemplateValues(
+            "0x742d35cc6634c0532925a3b844bc454e4438f44e",
+            12.34m,
+            configurationItem.Divisibility,
+            configurationItem.SmartContractAddress.ToLowerInvariant(),
+            configurationItem.ChainId);
+        if (config.PaymentLinkFormat is { } format)
+        {
+            var error = USDtPaymentLinkFormats.ValidateSelection(
+                format,
+                config.PaymentLinkTemplate,
+                true,
+                templateValues);
+            if (error is not null)
+                validationContext.ModelState.AddModelError(nameof(config.PaymentLinkFormat), error);
+        }
+        else if (!string.IsNullOrWhiteSpace(config.PaymentLinkTemplate))
+        {
+            var error = USDtPaymentLinkFormats.ValidateSelection(
+                USDtPaymentLinkFormat.Custom,
+                config.PaymentLinkTemplate,
+                true,
+                templateValues);
+            if (error is not null)
+                validationContext.ModelState.AddModelError(nameof(config.PaymentLinkTemplate), error);
+        }
         config.PreserveActivationFrom(previousConfig);
         validationContext.Config = JToken.FromObject(config, Serializer);
         return Task.CompletedTask;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Nethereum.JsonRpc.Client;
 using System.Security.Claims;
@@ -236,6 +237,50 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public void TronPaymentLinkCanUseAddressOnlyFormat()
+    {
+        var result = TronUSDtPaymentLinkExtension.BuildPaymentLink(
+            "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs",
+            12.34m,
+            USDtPaymentLinkFormat.AddressOnly,
+            null,
+            "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj",
+            6);
+
+        Assert.Equal("TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs", result);
+    }
+
+    [Fact]
+    public void TronCustomPaymentLinkSupportsAllTronPlaceholdersAndPreservesBase58Case()
+    {
+        var result = TronUSDtPaymentLinkExtension.BuildPaymentLink(
+            "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs",
+            12.34m,
+            USDtPaymentLinkFormat.Custom,
+            "wallet:{to}?amount={amount}&units={amountUnits}&contract={smartContractAddress}",
+            "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj",
+            6);
+
+        Assert.Equal(
+            "wallet:TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34&units=12340000&contract=TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj",
+            result);
+    }
+
+    [Fact]
+    public void InvalidTronCustomTemplateFallsBackToStandard()
+    {
+        var result = TronUSDtPaymentLinkExtension.BuildPaymentLink(
+            "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs",
+            12.34m,
+            USDtPaymentLinkFormat.Custom,
+            "wallet:{unknown}",
+            "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj",
+            6);
+
+        Assert.Equal("tron:TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs?amount=12.34", result);
+    }
+
+    [Fact]
     public void TronPaymentLinkReturnsNullWithoutDestination()
     {
         Assert.Null(TronUSDtPaymentLinkExtension.BuildPaymentLink(null, 12.34m, false));
@@ -270,6 +315,159 @@ public class FastTests : UnitTestBase
         Assert.Equal(
             "ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7@1/transfer?address=0x742d35cc6634c0532925a3b844bc454e4438f44e&uint256=0",
             result);
+    }
+
+    [Fact]
+    public void EvmPaymentLinkCanUseAddressOnlyFormat()
+    {
+        var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            "0xdAC17F958D2ee523A2206206994597C13D831ec7",
+            1,
+            6,
+            12.34m,
+            USDtPaymentLinkFormat.AddressOnly,
+            null);
+
+        Assert.Equal("0x742d35cc6634c0532925a3b844bc454e4438f44e", result);
+    }
+
+    [Fact]
+    public void EvmCustomPaymentLinkSupportsAllEvmPlaceholders()
+    {
+        var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            "0xdAC17F958D2ee523A2206206994597C13D831ec7",
+            137,
+            6,
+            12.34m,
+            USDtPaymentLinkFormat.Custom,
+            "wallet:{to}?amount={amount}&units={amountUnits}&contract={smartContractAddress}&chain={chainId}");
+
+        Assert.Equal(
+            "wallet:0x742d35cc6634c0532925a3b844bc454e4438f44e?amount=12.34&units=12340000&contract=0xdac17f958d2ee523a2206206994597c13d831ec7&chain=137",
+            result);
+    }
+
+    [Fact]
+    public void CustomPaymentLinkRenderingIsCultureInvariant()
+    {
+        var previousCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+            var result = EVMUSDtPaymentLinkExtension.BuildPaymentLink(
+                "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                "0xdAC17F958D2ee523A2206206994597C13D831ec7",
+                137,
+                6,
+                12.34m,
+                USDtPaymentLinkFormat.Custom,
+                "wallet:{to}?amount={amount}&units={amountUnits}&chain={chainId}");
+
+            Assert.Contains("amount=12.34&units=12340000&chain=137", result);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+        }
+    }
+
+    [Fact]
+    public void CustomTemplateSubstitutionIsNotRecursive()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["{to}"] = "{amount}",
+            ["{amount}"] = "12.34",
+            ["{amountUnits}"] = "12340000",
+            ["{smartContractAddress}"] = "contract"
+        };
+
+        var success = USDtPaymentLinkFormats.TryRenderTemplate(
+            "wallet:{to}?amount={amount}",
+            false,
+            values,
+            out var rendered,
+            out var error);
+
+        Assert.True(success, error);
+        Assert.Equal("wallet:{amount}?amount=12.34", rendered);
+    }
+
+    [Theory]
+    [InlineData(null, "A payment link template is required")]
+    [InlineData("wallet:{amount}", "must contain the {to} placeholder")]
+    [InlineData("wallet:{to}?value={unknown}", "Unknown or unsupported")]
+    [InlineData("wallet:{to", "invalid placeholder expression")]
+    [InlineData("wallet:{to}\n", "control characters")]
+    public void CustomTemplateValidationRejectsUnsafeTemplates(string? template, string expectedError)
+    {
+        var error = USDtPaymentLinkFormats.ValidateTemplate(template, false);
+
+        Assert.Contains(expectedError, error);
+    }
+
+    [Fact]
+    public void TronTemplatesRejectEvmOnlyChainIdPlaceholder()
+    {
+        var error = USDtPaymentLinkFormats.ValidateTemplate("wallet:{to}?chain={chainId}", false);
+
+        Assert.Contains("Unknown or unsupported", error);
+    }
+
+    [Fact]
+    public void TemplateValidationEnforcesInputAndRenderedLengthLimits()
+    {
+        var oversizedTemplate = "{to}" + new string('x', USDtPaymentLinkFormats.MaxTemplateLength);
+        Assert.Contains("cannot exceed", USDtPaymentLinkFormats.ValidateTemplate(oversizedTemplate, false));
+
+        var values = new Dictionary<string, string>
+        {
+            ["{to}"] = new string('x', USDtPaymentLinkFormats.MaxRenderedLength + 1),
+            ["{amount}"] = "12.34",
+            ["{amountUnits}"] = "12340000",
+            ["{smartContractAddress}"] = "contract"
+        };
+        Assert.False(USDtPaymentLinkFormats.TryRenderTemplate(
+            "{to}",
+            false,
+            values,
+            out _,
+            out var renderError));
+        Assert.Contains("cannot exceed", renderError);
+        Assert.Contains(
+            "cannot exceed",
+            USDtPaymentLinkFormats.ValidateSelection(
+                USDtPaymentLinkFormat.Custom,
+                "{to}",
+                false,
+                values));
+    }
+
+    [Fact]
+    public void PaymentLinkFormatResolutionPreservesLegacyConfigurations()
+    {
+        Assert.Equal(
+            USDtPaymentLinkFormat.Standard,
+            USDtPaymentLinkFormats.ResolveTron(null, null, false));
+        Assert.Equal(
+            USDtPaymentLinkFormat.StandardWithoutAmount,
+            USDtPaymentLinkFormats.ResolveTron(null, null, true));
+        Assert.Equal(
+            USDtPaymentLinkFormat.Custom,
+            USDtPaymentLinkFormats.ResolveEvm(null, "wallet:{to}"));
+        Assert.Equal(
+            USDtPaymentLinkFormat.AddressOnly,
+            USDtPaymentLinkFormats.ResolveTron(USDtPaymentLinkFormat.AddressOnly, "wallet:{to}", false));
+    }
+
+    [Fact]
+    public void EvmRejectsStandardWithoutAmountFormat()
+    {
+        Assert.Contains(
+            "not supported",
+            USDtPaymentLinkFormats.ValidateSelection(USDtPaymentLinkFormat.StandardWithoutAmount, null, true));
     }
 
     [Fact]
@@ -477,6 +675,164 @@ public class FastTests : UnitTestBase
             Assert.IsType<TronUSDtPaymentMethodConfig>(((IPaymentMethodHandler)handler).ParsePaymentMethodConfig(context.Config));
         Assert.True(parsedConfig.Activated);
         Assert.Equal(["TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"], parsedConfig.Addresses);
+    }
+
+    [Fact]
+    public void PaymentPromptDetailsSnapshotFormatAndTemplate()
+    {
+        var tronConfig = new TronUSDtPaymentMethodConfig
+        {
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{to}?amount={amount}"
+        };
+        var tronDetails = TronUSDtLikePaymentMethodHandler.CreatePaymentPromptDetails(tronConfig);
+        tronConfig.PaymentLinkFormat = USDtPaymentLinkFormat.AddressOnly;
+        tronConfig.PaymentLinkTemplate = "changed:{to}";
+
+        Assert.Equal(USDtPaymentLinkFormat.Custom, tronDetails.PaymentLinkFormat);
+        Assert.Equal("wallet:{to}?amount={amount}", tronDetails.PaymentLinkTemplate);
+        Assert.False(tronDetails.ExcludeAmountFromPaymentLink);
+
+        var evmConfig = new EVMUSDtPaymentMethodConfig
+        {
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{to}?chain={chainId}"
+        };
+        var evmDetails = EVMUSDtPaymentMethodHandler.CreatePaymentPromptDetails(evmConfig);
+        evmConfig.PaymentLinkFormat = USDtPaymentLinkFormat.Standard;
+        evmConfig.PaymentLinkTemplate = null;
+
+        Assert.Equal(USDtPaymentLinkFormat.Custom, evmDetails.PaymentLinkFormat);
+        Assert.Equal("wallet:{to}?chain={chainId}", evmDetails.PaymentLinkTemplate);
+    }
+
+    [Fact]
+    public void PaymentLinkConfigurationSerializationPreservesLegacyAndNewProperties()
+    {
+        var tronHandler = new TronUSDtLikePaymentMethodHandler(CreateTronConfiguration(), null!, null!, null!);
+        var oldConfigToken = JObject.Parse("""{"excludeAmountFromPaymentLink":true}""");
+        var oldConfig = Assert.IsType<TronUSDtPaymentMethodConfig>(
+            ((IPaymentMethodHandler)tronHandler).ParsePaymentMethodConfig(oldConfigToken));
+        Assert.Null(oldConfig.PaymentLinkFormat);
+        Assert.Equal(
+            USDtPaymentLinkFormat.StandardWithoutAmount,
+            USDtPaymentLinkFormats.ResolveTron(
+                oldConfig.PaymentLinkFormat,
+                oldConfig.PaymentLinkTemplate,
+                oldConfig.ExcludeAmountFromPaymentLink));
+
+        var templateOnlyConfig = Assert.IsType<TronUSDtPaymentMethodConfig>(
+            ((IPaymentMethodHandler)tronHandler).ParsePaymentMethodConfig(
+                JObject.Parse("{\"paymentLinkTemplate\":\"wallet:{to}\"}")));
+        Assert.Equal(
+            USDtPaymentLinkFormat.Custom,
+            USDtPaymentLinkFormats.ResolveTron(
+                templateOnlyConfig.PaymentLinkFormat,
+                templateOnlyConfig.PaymentLinkTemplate,
+                templateOnlyConfig.ExcludeAmountFromPaymentLink));
+
+        var newConfig = new TronUSDtPaymentMethodConfig
+        {
+            ExcludeAmountFromPaymentLink = true,
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{to}"
+        };
+        var roundTrip = JObject.FromObject(newConfig, tronHandler.Serializer)
+            .ToObject<TronUSDtPaymentMethodConfig>(tronHandler.Serializer);
+
+        Assert.NotNull(roundTrip);
+        Assert.True(roundTrip.ExcludeAmountFromPaymentLink);
+        Assert.Equal(USDtPaymentLinkFormat.Custom, roundTrip.PaymentLinkFormat);
+        Assert.Equal("wallet:{to}", roundTrip.PaymentLinkTemplate);
+
+        var evmHandler = new EVMUSDtPaymentMethodHandler(CreateEvmConfiguration(), null!, null!, null!);
+        var evmRoundTrip = JObject.FromObject(new EVMUSDtPaymentMethodConfig
+            {
+                PaymentLinkFormat = USDtPaymentLinkFormat.AddressOnly,
+                PaymentLinkTemplate = "saved:{to}"
+            }, evmHandler.Serializer)
+            .ToObject<EVMUSDtPaymentMethodConfig>(evmHandler.Serializer);
+
+        Assert.NotNull(evmRoundTrip);
+        Assert.Equal(USDtPaymentLinkFormat.AddressOnly, evmRoundTrip.PaymentLinkFormat);
+        Assert.Equal("saved:{to}", evmRoundTrip.PaymentLinkTemplate);
+    }
+
+    [Fact]
+    public void PaymentPromptDetailsSerializationSupportsOldAndNewInvoices()
+    {
+        var tronHandler = new TronUSDtLikePaymentMethodHandler(CreateTronConfiguration(), null!, null!, null!);
+        var oldTronDetails = JObject.Parse("""{"excludeAmountFromPaymentLink":true}""")
+            .ToObject<TronUSDtLikeOnChainPaymentMethodDetails>(tronHandler.Serializer);
+
+        Assert.NotNull(oldTronDetails);
+        Assert.Null(oldTronDetails.PaymentLinkFormat);
+        Assert.Equal(
+            USDtPaymentLinkFormat.StandardWithoutAmount,
+            USDtPaymentLinkFormats.ResolveTron(
+                oldTronDetails.PaymentLinkFormat,
+                oldTronDetails.PaymentLinkTemplate,
+                oldTronDetails.ExcludeAmountFromPaymentLink));
+
+        var newTronDetails = new TronUSDtLikeOnChainPaymentMethodDetails
+        {
+            ExcludeAmountFromPaymentLink = true,
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{to}"
+        };
+        var tronRoundTrip = JObject.FromObject(newTronDetails, tronHandler.Serializer)
+            .ToObject<TronUSDtLikeOnChainPaymentMethodDetails>(tronHandler.Serializer);
+        Assert.NotNull(tronRoundTrip);
+        Assert.Equal(USDtPaymentLinkFormat.Custom, tronRoundTrip.PaymentLinkFormat);
+        Assert.Equal("wallet:{to}", tronRoundTrip.PaymentLinkTemplate);
+
+        var evmHandler = new EVMUSDtPaymentMethodHandler(CreateEvmConfiguration(), null!, null!, null!);
+        var oldEvmDetails = JObject.Parse("{}")
+            .ToObject<EVMUSDtLikeOnChainPaymentMethodDetails>(evmHandler.Serializer);
+        Assert.NotNull(oldEvmDetails);
+        Assert.Equal(
+            USDtPaymentLinkFormat.Standard,
+            USDtPaymentLinkFormats.ResolveEvm(
+                oldEvmDetails.PaymentLinkFormat,
+                oldEvmDetails.PaymentLinkTemplate));
+
+        var newEvmDetails = new EVMUSDtLikeOnChainPaymentMethodDetails
+        {
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{to}?chain={chainId}"
+        };
+        var evmRoundTrip = JObject.FromObject(newEvmDetails, evmHandler.Serializer)
+            .ToObject<EVMUSDtLikeOnChainPaymentMethodDetails>(evmHandler.Serializer);
+        Assert.NotNull(evmRoundTrip);
+        Assert.Equal(USDtPaymentLinkFormat.Custom, evmRoundTrip.PaymentLinkFormat);
+        Assert.Equal("wallet:{to}?chain={chainId}", evmRoundTrip.PaymentLinkTemplate);
+    }
+
+    [Fact]
+    public async Task PaymentMethodHandlersRejectInvalidFormatConfigurations()
+    {
+        var evmHandler = new EVMUSDtPaymentMethodHandler(CreateEvmConfiguration(), null!, null!, null!);
+        var unsupportedEvmConfig = JObject.FromObject(new EVMUSDtPaymentMethodConfig
+        {
+            PaymentLinkFormat = USDtPaymentLinkFormat.StandardWithoutAmount
+        }, evmHandler.Serializer);
+        var evmContext = CreateValidationContext(unsupportedEvmConfig);
+
+        await evmHandler.ValidatePaymentMethodConfig(evmContext);
+
+        Assert.False(evmContext.ModelState.IsValid);
+
+        var tronHandler = new TronUSDtLikePaymentMethodHandler(CreateTronConfiguration(), null!, null!, null!);
+        var invalidTronConfig = JObject.FromObject(new TronUSDtPaymentMethodConfig
+        {
+            PaymentLinkFormat = USDtPaymentLinkFormat.Custom,
+            PaymentLinkTemplate = "wallet:{chainId}"
+        }, tronHandler.Serializer);
+        var tronContext = CreateValidationContext(invalidTronConfig);
+
+        await tronHandler.ValidatePaymentMethodConfig(tronContext);
+
+        Assert.False(tronContext.ModelState.IsValid);
     }
 
     [Fact]

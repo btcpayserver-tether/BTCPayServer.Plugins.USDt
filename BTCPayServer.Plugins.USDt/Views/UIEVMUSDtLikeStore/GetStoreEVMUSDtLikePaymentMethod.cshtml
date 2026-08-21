@@ -2,6 +2,7 @@
 @using BTCPayServer.Abstractions.Models
 @using BTCPayServer.Client
 @using BTCPayServer.Plugins.USDt
+@using BTCPayServer.Plugins.USDt.Services.Payments
 @using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
@@ -128,6 +129,39 @@
                 <label asp-for="Enabled" class="form-check-label"></label>
                 <span asp-validation-for="Enabled" class="text-danger"></span>
             </div>
+            <div class="form-group mb-3">
+                <label asp-for="PaymentLinkFormat" class="form-label">Payment link format</label>
+                <select asp-for="PaymentLinkFormat" class="form-select">
+                    <option value="@((int)USDtPaymentLinkFormat.Standard)">EIP-681 token transfer URI (recommended)</option>
+                    <option value="@((int)USDtPaymentLinkFormat.AddressOnly)">Address only</option>
+                    <option value="@((int)USDtPaymentLinkFormat.Custom)">Custom template</option>
+                </select>
+                <span asp-validation-for="PaymentLinkFormat" class="text-danger"></span>
+            </div>
+            <div class="form-text mb-3">
+                Address-only links require customers to select @Model.ChainDisplayName and USD₮ and enter the amount manually.
+            </div>
+            <div id="PaymentLinkTemplateGroup" class="form-group mb-3" hidden
+                 data-allowed-placeholders="{to},{amount},{amountUnits},{smartContractAddress},{chainId}"
+                 data-to="@Model.TemplatePreviewDestination"
+                 data-amount="@Model.TemplatePreviewAmount"
+                 data-amount-units="@Model.TemplatePreviewAmountUnits"
+                 data-smart-contract-address="@Model.TemplatePreviewSmartContractAddress"
+                 data-chain-id="@Model.TemplatePreviewChainId">
+                <label asp-for="PaymentLinkTemplate" class="form-label">Custom payment link template</label>
+                <textarea asp-for="PaymentLinkTemplate" class="form-control" rows="3" maxlength="2048"
+                          placeholder="ethereum:{smartContractAddress}@@{chainId}/transfer?address={to}&amp;uint256={amountUnits}"></textarea>
+                <div class="form-text">
+                    Required placeholder: <code>{to}</code>. Available placeholders:
+                    <code>{to}</code>, <code>{amount}</code>, <code>{amountUnits}</code>,
+                    <code>{smartContractAddress}</code>, <code>{chainId}</code>.
+                </div>
+                <div id="PaymentLinkTemplateError" class="text-danger mt-2" role="alert"></div>
+                <div id="PaymentLinkTemplatePreview" class="mt-2" hidden>
+                    <span class="form-label">Preview</span>
+                    <code id="PaymentLinkTemplatePreviewValue" class="d-block text-break"></code>
+                </div>
+            </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary" id="SaveButton">Save</button>
             </div>
@@ -140,4 +174,69 @@
 
 @section PageFootContent {
     @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        (() => {
+            const format = document.getElementById('PaymentLinkFormat');
+            const template = document.getElementById('PaymentLinkTemplate');
+            const group = document.getElementById('PaymentLinkTemplateGroup');
+            const error = document.getElementById('PaymentLinkTemplateError');
+            const preview = document.getElementById('PaymentLinkTemplatePreview');
+            const previewValue = document.getElementById('PaymentLinkTemplatePreviewValue');
+            const allowed = new Set(group.dataset.allowedPlaceholders.split(','));
+            const values = {
+                '{to}': group.dataset.to,
+                '{amount}': group.dataset.amount,
+                '{amountUnits}': group.dataset.amountUnits,
+                '{smartContractAddress}': group.dataset.smartContractAddress,
+                '{chainId}': group.dataset.chainId
+            };
+            const placeholderPattern = /\{[^{}]*\}/g;
+
+            const render = () => {
+                const custom = format.value === '@((int)USDtPaymentLinkFormat.Custom)';
+                group.hidden = !custom;
+                error.textContent = '';
+                preview.hidden = true;
+                if (!custom) return true;
+
+                const value = template.value;
+                let message = '';
+                if (!value.trim()) message = 'A payment link template is required.';
+                else if (value.length > 2048) message = 'The payment link template cannot exceed 2048 characters.';
+                else if (/[\u0000-\u001F\u007F]/.test(value)) message = 'Control characters are not allowed.';
+
+                const placeholders = value.match(placeholderPattern) || [];
+                if (!message) {
+                    const unsupported = placeholders.find(item => !allowed.has(item));
+                    if (unsupported) message = `Unknown or unsupported placeholder: ${unsupported}.`;
+                }
+                if (!message && value.replace(placeholderPattern, '').match(/[{}]/))
+                    message = 'The template contains an invalid placeholder expression.';
+                if (!message && !value.includes('{to}'))
+                    message = 'The template must contain the {to} placeholder.';
+
+                if (message) {
+                    error.textContent = message;
+                    return false;
+                }
+
+                const rendered = value.replace(placeholderPattern, item => values[item]);
+                if (!rendered.trim() || rendered.length > 4096) {
+                    error.textContent = 'The rendered payment link is empty or too long.';
+                    return false;
+                }
+
+                previewValue.textContent = rendered;
+                preview.hidden = false;
+                return true;
+            };
+
+            format.addEventListener('change', render);
+            template.addEventListener('input', render);
+            format.closest('form').addEventListener('submit', event => {
+                if (!render()) event.preventDefault();
+            });
+            render();
+        })();
+    </script>
 }
