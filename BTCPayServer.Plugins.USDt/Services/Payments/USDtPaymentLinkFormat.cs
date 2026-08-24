@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.Plugins.USDt.Services.Payments;
 
@@ -53,6 +55,32 @@ internal static class USDtPaymentLinkFormats
             return USDtPaymentLinkFormat.Custom;
 
         return USDtPaymentLinkFormat.Standard;
+    }
+
+    internal static USDtPaymentLinkFormat? ReadFormat(JToken? details, bool isEvm)
+    {
+        if (details is null)
+            return null;
+
+        if (details is not JObject detailsObject)
+            return USDtPaymentLinkFormat.Standard;
+
+        var token = detailsObject["paymentLinkFormat"];
+        if (token is null || token.Type is JTokenType.Null or JTokenType.Undefined)
+            return null;
+
+        try
+        {
+            var format = token.ToObject<USDtPaymentLinkFormat?>();
+            return format is { } explicitFormat && IsSupported(explicitFormat, isEvm)
+                ? explicitFormat
+                : USDtPaymentLinkFormat.Standard;
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException or FormatException or
+                                          InvalidCastException or OverflowException)
+        {
+            return USDtPaymentLinkFormat.Standard;
+        }
     }
 
     internal static bool IsSupported(USDtPaymentLinkFormat format, bool isEvm)
