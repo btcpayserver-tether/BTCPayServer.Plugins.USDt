@@ -18,7 +18,7 @@ public class EVMUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtPl
         var configuration = pluginConfiguration.EVMUSDtLikeConfigurationItems[paymentMethodId];
         var template = prompt.Details?.Value<string?>("paymentLinkTemplate");
         var format = USDtPaymentLinkFormats.ResolveEvm(
-            prompt.Details?.Value<USDtPaymentLinkFormat?>("paymentLinkFormat"),
+            USDtPaymentLinkFormats.ReadFormat(prompt.Details, true),
             template);
         return BuildPaymentLink(
             prompt.Destination,

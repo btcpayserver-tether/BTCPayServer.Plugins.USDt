@@ -17,7 +17,7 @@ public class TronUSDtPaymentLinkExtension(PaymentMethodId paymentMethodId, USDtP
         var configuration = pluginConfiguration.TronUSDtLikeConfigurationItems[paymentMethodId];
         var template = prompt.Details?.Value<string?>("paymentLinkTemplate");
         var format = USDtPaymentLinkFormats.ResolveTron(
-            prompt.Details?.Value<USDtPaymentLinkFormat?>("paymentLinkFormat"),
+            USDtPaymentLinkFormats.ReadFormat(prompt.Details, false),
             template,
             prompt.Details?.Value<bool?>("excludeAmountFromPaymentLink") ?? false);
 
