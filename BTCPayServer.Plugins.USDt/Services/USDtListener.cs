@@ -101,13 +101,12 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
                 var listenerState = await LoadTrackingState(configurationItem);
                 var web3Client = rpcProvider.GetWeb3Client(paymentMethodId);
+                var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
+                    BlockParameter.CreateLatest());
                 if (listenerState == null)
                 {
                     logger.LogInformation("No tracking state found for {Listener}, new blockchain",
                         logContext);
-
-                    var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
 
                     listenerState = new EVMBasedListenerState
                     {
@@ -117,14 +116,13 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                 }
                 else
                 {
-                    var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync(
-                        BlockParameter.CreateLatest());
-
                     logger.LogInformation(
                         "Tracking state for {Listener}, current={CurrentBlockNumber}, latest={LatestBlockNumber}",
                         logContext, listenerState.LastBlockHeight, latestBlockNumber);
                 }
 
+                var safeHeadLagBlocks = GetHeadLagBlocks(configurationItem);
+                var latestSafeBlockHeight = Math.Max(-1, (long)latestBlockNumber.Value - safeHeadLagBlocks);
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     var invoices = (await trackedInvoiceProvider.GetTrackedInvoices(paymentMethodId, stoppingToken))
@@ -146,9 +144,11 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                     else
                     {
                         var nextBlockHeight = listenerState.LastBlockHeight + 1;
-                        var latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
-                        var safeHeadLagBlocks = GetHeadLagBlocks(configurationItem);
-                        var latestSafeBlockHeight = Math.Max(-1, (long)latestBlockNumber.Value - safeHeadLagBlocks);
+                        if (nextBlockHeight > latestSafeBlockHeight)
+                        {
+                            latestBlockNumber = await web3Client.Eth.Blocks.GetBlockNumber.SendRequestAsync();
+                            latestSafeBlockHeight = Math.Max(-1, (long)latestBlockNumber.Value - safeHeadLagBlocks);
+                        }
 
                         if (nextBlockHeight > latestSafeBlockHeight)
                         {
