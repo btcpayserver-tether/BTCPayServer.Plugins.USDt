@@ -58,6 +58,11 @@ public class TronUSDtListener(
         return USDtListenerShared.GetBlockPollingDelay(configurationItem.BlockTimeSeconds);
     }
 
+    protected override long GetHeadLagBlocks(TronUSDtLikeConfigurationItem configurationItem)
+    {
+        return 1;
+    }
+
     protected override long CreateInitialLastBlockHeight(HexBigInteger latestBlockNumber)
     {
         return (long)latestBlockNumber.Value;
@@ -72,25 +77,16 @@ public class TronUSDtListener(
         CancellationToken stoppingToken)
     {
         var web3Client = tronUSDtRpcProvider.GetWeb3Client(paymentMethodId);
-        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>();
-
-        List<EventLog<TransferEventDTO>>? changes;
-        var tries = 0;
-        do
-        {
-            changes = await transferEvent.GetAllChangesAsync(
-                transferEvent.CreateFilterInput(new BlockParameter(block.Number), new BlockParameter(block.Number)));
-
-            if (changes != null && changes.Count != 0)
-                break;
-
-            await Task.Delay(250, stoppingToken);
-        } while (tries++ < 3);
+        var contractAddress =
+            usdtPluginConfiguration.TronUSDtLikeConfigurationItems[paymentMethodId].SmartContractAddress;
+        var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(
+            TronUSDtAddressHelper.Base58ToHex(contractAddress));
+        var changes = await transferEvent.GetAllChangesAsync(
+            transferEvent.CreateFilterInput(new BlockParameter(block.Number), new BlockParameter(block.Number)));
 
         if (changes == null)
             throw new InvalidOperationException($"Unable to get changes {block.Number}");
 
-        var contractAddress = usdtPluginConfiguration.TronUSDtLikeConfigurationItems[paymentMethodId].SmartContractAddress;
         return changes
             .Where(t => !t.Log.Removed && TronUSDtAddressHelper.HexToBase58(t.Log.Address)
                 .Equals(contractAddress, StringComparison.InvariantCultureIgnoreCase))

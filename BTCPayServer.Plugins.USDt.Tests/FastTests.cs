@@ -49,6 +49,12 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public void TronListenerWaitsOneBlockBeforeQueryingLogs()
+    {
+        Assert.Equal(1, TestableTronListener.GetHeadLag(CreateTronConfiguration()));
+    }
+
+    [Fact]
     public void RateLimitBackoffIsJitteredAndCapped()
     {
         Assert.Equal(USDtListenerShared.InitialRateLimitBackoffMs, 5_000);
@@ -943,6 +949,19 @@ public class FastTests : UnitTestBase
         public static long GetHeadLag(EVMUSDtLikeConfigurationItem configuration)
         {
             return new TestableEvmListener().GetHeadLagBlocks(configuration);
+        }
+    }
+
+    private sealed class TestableTronListener : TronUSDtListener
+    {
+        public TestableTronListener()
+            : base(null!, null!, null!, null!, null!, null!, null!, null!, null!)
+        {
+        }
+
+        public static long GetHeadLag(TronUSDtLikeConfigurationItem configuration)
+        {
+            return new TestableTronListener().GetHeadLagBlocks(configuration);
         }
     }
 
