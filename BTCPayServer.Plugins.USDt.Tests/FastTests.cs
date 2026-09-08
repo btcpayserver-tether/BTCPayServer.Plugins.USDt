@@ -55,6 +55,80 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
+    public void TronListenerPacesCatchUp()
+    {
+        Assert.Equal(
+            TimeSpan.FromMilliseconds(300),
+            TestableTronListener.GetCatchUpDelay(CreateTronConfiguration()));
+    }
+
+    [Fact]
+    public void TronListenerKeepsConfiguredHeadPollingDelay()
+    {
+        Assert.Equal(
+            TimeSpan.FromSeconds(3),
+            TestableTronListener.GetPollingDelay(CreateTronConfiguration()));
+    }
+
+    [Fact]
+    public void EvmListenersDoNotPaceCatchUp()
+    {
+        Assert.Equal(TimeSpan.Zero, TestableEvmListener.GetCatchUpDelay(CreateEvmConfiguration()));
+    }
+
+    [Fact]
+    public async Task TronCatchUpPacingIsCancellationAware()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var pacingTask = TestableTronListener.PaceCatchUp(
+            true,
+            99,
+            100,
+            CreateTronConfiguration(),
+            cancellation.Token);
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pacingTask);
+    }
+
+    [Fact]
+    public async Task TronCatchUpPacingCompletesImmediatelyAtSafeHead()
+    {
+        var pacingTask = TestableTronListener.PaceCatchUp(
+            true,
+            100,
+            100,
+            CreateTronConfiguration(),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(pacingTask.IsCompletedSuccessfully);
+        await pacingTask;
+    }
+
+    [Theory]
+    [InlineData(true, 99, 100, 300, true)]
+    [InlineData(true, 100, 100, 300, false)]
+    [InlineData(true, 101, 100, 300, false)]
+    [InlineData(false, 99, 100, 300, false)]
+    [InlineData(true, 99, 100, 0, false)]
+    public void CatchUpPacingRequiresASuccessfullyIndexedBackloggedBlock(
+        bool blockIndexed,
+        long lastBlockHeight,
+        long latestSafeBlockHeight,
+        int delayMilliseconds,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            USDtListenerShared.ShouldPaceCatchUpBlock(
+                blockIndexed,
+                lastBlockHeight,
+                latestSafeBlockHeight,
+                TimeSpan.FromMilliseconds(delayMilliseconds)));
+    }
+
+    [Fact]
     public void RateLimitBackoffIsJitteredAndCapped()
     {
         Assert.Equal(USDtListenerShared.InitialRateLimitBackoffMs, 5_000);
@@ -950,6 +1024,11 @@ public class FastTests : UnitTestBase
         {
             return new TestableEvmListener().GetHeadLagBlocks(configuration);
         }
+
+        public static TimeSpan GetCatchUpDelay(EVMUSDtLikeConfigurationItem configuration)
+        {
+            return new TestableEvmListener().GetCatchUpPacingDelay(configuration);
+        }
     }
 
     private sealed class TestableTronListener : TronUSDtListener
@@ -962,6 +1041,31 @@ public class FastTests : UnitTestBase
         public static long GetHeadLag(TronUSDtLikeConfigurationItem configuration)
         {
             return new TestableTronListener().GetHeadLagBlocks(configuration);
+        }
+
+        public static TimeSpan GetCatchUpDelay(TronUSDtLikeConfigurationItem configuration)
+        {
+            return new TestableTronListener().GetCatchUpPacingDelay(configuration);
+        }
+
+        public static Task PaceCatchUp(
+            bool blockIndexed,
+            BigInteger lastBlockHeight,
+            BigInteger latestSafeBlockHeight,
+            TronUSDtLikeConfigurationItem configuration,
+            CancellationToken cancellationToken)
+        {
+            return new TestableTronListener().PaceCatchUpAsync(
+                blockIndexed,
+                lastBlockHeight,
+                latestSafeBlockHeight,
+                configuration,
+                cancellationToken);
+        }
+
+        public static TimeSpan GetPollingDelay(TronUSDtLikeConfigurationItem configuration)
+        {
+            return new TestableTronListener().GetHeadPollingDelay(configuration);
         }
     }
 

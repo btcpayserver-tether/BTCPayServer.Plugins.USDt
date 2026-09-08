@@ -55,6 +55,22 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
     protected virtual long CreateInitialLastBlockHeight(HexBigInteger latestBlockNumber) => (long)latestBlockNumber.Value - 1;
     protected virtual long GetHeadLagBlocks(TConfigurationItem configurationItem) => 0;
     protected virtual TimeSpan GetHeadPollingDelay(TConfigurationItem configurationItem) => TimeSpan.FromSeconds(1);
+    protected virtual TimeSpan GetCatchUpPacingDelay(TConfigurationItem configurationItem) => TimeSpan.Zero;
+    protected async Task PaceCatchUpAsync(
+        bool blockIndexed,
+        BigInteger lastBlockHeight,
+        BigInteger latestSafeBlockHeight,
+        TConfigurationItem configurationItem,
+        CancellationToken cancellationToken)
+    {
+        var delay = GetCatchUpPacingDelay(configurationItem);
+        if (USDtListenerShared.ShouldPaceCatchUpBlock(
+                blockIndexed,
+                lastBlockHeight,
+                latestSafeBlockHeight,
+                delay))
+            await Task.Delay(delay, cancellationToken);
+    }
     protected virtual LogLevel EmptyQueueBlockAdvanceLogLevel => LogLevel.Information;
     protected virtual IDisposable? BeginLoggingScope(PaymentMethodId paymentMethodId) => null;
     protected virtual string NormalizeDestinationKey(string destination) => destination.ToLowerInvariant();
@@ -125,6 +141,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                 var latestSafeBlockHeight = Math.Max(-1, (long)latestBlockNumber.Value - safeHeadLagBlocks);
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    var blockIndexed = false;
                     var invoices = (await trackedInvoiceProvider.GetTrackedInvoices(paymentMethodId, stoppingToken))
                         .Where(invoice => invoice.GetPaymentPrompt(paymentMethodId)?.Activated is true)
                         .ToArray();
@@ -170,6 +187,7 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
                                 logContext, block.Number);
 
                             listenerState.LastBlockHeight = (long)block.Number.Value;
+                            blockIndexed = true;
                         }
                         else
                         {
@@ -182,6 +200,12 @@ public abstract class USDtListener<TConfigurationItem, TPaymentData>(
 
                     await SetTrackingState(configurationItem, listenerState);
                     rateLimitBackoffMs = USDtListenerShared.InitialRateLimitBackoffMs;
+                    await PaceCatchUpAsync(
+                        blockIndexed,
+                        listenerState.LastBlockHeight,
+                        latestSafeBlockHeight,
+                        configurationItem,
+                        stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

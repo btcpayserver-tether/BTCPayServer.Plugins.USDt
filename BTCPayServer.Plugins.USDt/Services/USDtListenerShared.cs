@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using BTCPayServer.Client.Models;
 using Nethereum.Hex.HexTypes;
 
@@ -19,6 +20,17 @@ public static class USDtListenerShared
     internal static TimeSpan GetBlockPollingDelay(double blockTimeSeconds)
     {
         return TimeSpan.FromSeconds(Math.Max(1, blockTimeSeconds));
+    }
+
+    internal static bool ShouldPaceCatchUpBlock(
+        bool blockIndexed,
+        BigInteger lastBlockHeight,
+        BigInteger latestSafeBlockHeight,
+        TimeSpan delay)
+    {
+        return blockIndexed &&
+               lastBlockHeight < latestSafeBlockHeight &&
+               delay > TimeSpan.Zero;
     }
 
     internal static int CalculateRateLimitDelayMs(int backoffMs, double jitterUnit)
