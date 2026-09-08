@@ -39,6 +39,10 @@ public class TronUSDtListener(
         handlers,
         paymentService)
 {
+    // Backlog scanning uses two RPC calls per block. This caps that work near 7 QPS before network latency,
+    // leaving headroom under TronGrid's 15 QPS key limit for head and balance requests.
+    private static readonly TimeSpan CatchUpPacingDelay = TimeSpan.FromMilliseconds(300);
+
     protected override IReadOnlyDictionary<PaymentMethodId, TronUSDtLikeConfigurationItem> GetConfigurations()
     {
         return usdtPluginConfiguration.TronUSDtLikeConfigurationItems;
@@ -56,6 +60,11 @@ public class TronUSDtListener(
     protected override TimeSpan GetHeadPollingDelay(TronUSDtLikeConfigurationItem configurationItem)
     {
         return USDtListenerShared.GetBlockPollingDelay(configurationItem.BlockTimeSeconds);
+    }
+
+    protected override TimeSpan GetCatchUpPacingDelay(TronUSDtLikeConfigurationItem configurationItem)
+    {
+        return CatchUpPacingDelay;
     }
 
     protected override long GetHeadLagBlocks(TronUSDtLikeConfigurationItem configurationItem)
