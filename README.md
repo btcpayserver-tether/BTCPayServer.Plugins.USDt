@@ -45,9 +45,12 @@ Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugin
 Ethereum USDt is already supported as `USDT-ETHEREUM`, using the six-decimal
 contract `0xdac17f958d2ee523a2206206994597c13d831ec7` on chain ID 1.
 The EVM listener queries ERC-20 Transfer logs and tracks confirmation counts.
-Multiple Transfer events in one transaction are credited separately. The first
-transfer retains the legacy payment ID; additional transfers use a log-index
-suffix so they are not discarded as duplicates. Existing stored payments are
+Multiple Transfer events in one transaction are credited separately. New
+transfers use a log-index suffix, keeping their identities stable even when the
+set of tracked destinations changes. Already stored legacy IDs are retained by
+matching the recipient and amount to a log not credited under a log-index ID.
+Missing/invalid indices, conflicting duplicates, and unmatched legacy payments
+stop processing rather than risk incorrect credit. Existing stored payments are
 not rewritten; previously missed historical logs require an explicit rescan.
 
 ### Naming convention

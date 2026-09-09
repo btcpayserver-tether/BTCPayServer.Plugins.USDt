@@ -874,21 +874,21 @@ public class FastTests : UnitTestBase
                     123,
                     "0xabc",
                     "1",
-                    false),
+                    false, 0),
                 new EVMUSDtListener.TransferLogSnapshot(
                     "0x9999999999999999999999999999999999999999",
                     "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                     456,
                     "0xdef",
                     "2",
-                    false),
+                    false, 1),
                 new EVMUSDtListener.TransferLogSnapshot(
                     "0x1111111111111111111111111111111111111111",
                     "0xcccccccccccccccccccccccccccccccccccccccc",
                     789,
                     "0xghi",
                     "3",
-                    true)
+                    true, 2)
             ],
             trackedAddresses);
 
@@ -897,7 +897,7 @@ public class FastTests : UnitTestBase
         Assert.Equal("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", match.From);
         Assert.Equal("0x742D35Cc6634C0532925a3b844Bc454e4438f44E", match.To);
         Assert.Equal(new BigInteger(123), match.TotalAmount);
-        Assert.Equal("abc-1", match.TransactionId);
+        Assert.Equal("abc-1-log-0", match.TransactionId);
     }
 
     [Fact]
