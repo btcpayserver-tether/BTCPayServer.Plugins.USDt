@@ -115,4 +115,61 @@ public class Erc20RegressionTests
         Assert.Throws<InvalidOperationException>(() => EVMUSDtListener.ToTransferMatchSnapshots(
             [log, log with { Value = 2 }], [destination]));
     }
+
+    [Theory]
+    [InlineData("ABC-3")]
+    [InlineData("ABC-3-LOG-7")]
+    public void ReplayPreservesExactStoredIdDespiteCasing(string storedId)
+    {
+        const string destination = "0x1111111111111111111111111111111111111111";
+        var log = new EVMUSDtListener.TransferLogSnapshot(destination, destination, 1, "0xabc", "3", false, 7);
+        var replay = EVMUSDtListener.ToTransferMatchSnapshots([log], [destination],
+            [new EVMUSDtListener.ExistingTransferSnapshot(storedId, destination, 1)]);
+        Assert.Equal(storedId, Assert.Single(replay).TransactionId);
+    }
+
+    [Fact]
+    public void IdenticalStoredEntriesAreDeduplicated()
+    {
+        const string destination = "0x1111111111111111111111111111111111111111";
+        var log = new EVMUSDtListener.TransferLogSnapshot(destination, destination, 1, "0xabc", "3", false, 7);
+        var stored = new EVMUSDtListener.ExistingTransferSnapshot("abc-3", destination, 1);
+        var replay = EVMUSDtListener.ToTransferMatchSnapshots([log], [destination], [stored, stored]);
+        Assert.Equal(stored.TransactionId, Assert.Single(replay).TransactionId);
+    }
+
+    [Theory]
+    [InlineData("abc-3", 2)]
+    [InlineData("ABC-3", 1)]
+    public void ConflictingStoredEntriesFailWithPaymentId(string secondId, int secondAmount)
+    {
+        const string destination = "0x1111111111111111111111111111111111111111";
+        var log = new EVMUSDtListener.TransferLogSnapshot(destination, destination, 1, "0xabc", "3", false, 7);
+        var error = Assert.Throws<InvalidOperationException>(() => EVMUSDtListener.ToTransferMatchSnapshots([log], [destination],
+            [new EVMUSDtListener.ExistingTransferSnapshot("abc-3", destination, 1),
+             new EVMUSDtListener.ExistingTransferSnapshot(secondId, destination, secondAmount)]));
+        Assert.Contains(secondId, error.Message);
+    }
+
+    [Fact]
+    public void RpcHashCasingDoesNotChangeNewIdsOrDuplicateLogs()
+    {
+        const string destination = "0x1111111111111111111111111111111111111111";
+        var log = new EVMUSDtListener.TransferLogSnapshot(destination, destination, 1, "0xabc", "3", false, 7);
+        var initial = Assert.Single(EVMUSDtListener.ToTransferMatchSnapshots([log], [destination]));
+        var replay = EVMUSDtListener.ToTransferMatchSnapshots([log, log with { TransactionHash = "0XABC" }], [destination]);
+        Assert.Equal(initial, Assert.Single(replay));
+    }
+
+    [Theory]
+    [InlineData("ABC-3")]
+    [InlineData("ABC-3-LOG-7")]
+    public void StoredMismatchReportsExactPaymentId(string storedId)
+    {
+        const string destination = "0x1111111111111111111111111111111111111111";
+        var log = new EVMUSDtListener.TransferLogSnapshot(destination, destination, 1, "0xabc", "3", false, 7);
+        var error = Assert.Throws<InvalidOperationException>(() => EVMUSDtListener.ToTransferMatchSnapshots([log], [destination],
+            [new EVMUSDtListener.ExistingTransferSnapshot(storedId, destination, 2)]));
+        Assert.Contains(storedId, error.Message);
+    }
 }
