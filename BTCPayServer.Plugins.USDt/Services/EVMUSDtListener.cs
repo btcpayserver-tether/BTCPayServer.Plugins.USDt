@@ -172,11 +172,25 @@ public class EVMUSDtListener(
             .Select(address => address.ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);
 
-        var existing = (existingTransfers ?? []).ToDictionary(payment => payment.TransactionId);
+        var existing = new Dictionary<string, ExistingTransferSnapshot>(StringComparer.OrdinalIgnoreCase);
+        foreach (var payment in existingTransfers ?? [])
+        {
+            if (existing.TryGetValue(payment.TransactionId, out var duplicate))
+            {
+                // Identical repeated entries are harmless, but two distinct stored IDs
+                // differing only in case cannot safely be treated as one DB payment.
+                if (duplicate.TransactionId != payment.TransactionId || duplicate.Value != payment.Value ||
+                    !string.Equals(duplicate.To, payment.To, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Conflicting stored ERC-20 payment ID: {payment.TransactionId}.");
+            }
+            else
+                existing.Add(payment.TransactionId, payment);
+        }
         // New IDs must not depend on which invoice destinations remain tracked.
         // Only reuse a legacy ID when it is already stored for a matching log.
         return changes
             .Where(change => !change.Removed)
+            .Select(change => change with { TransactionHash = change.TransactionHash.ToLowerInvariant() })
             .OrderBy(change => change.LogIndex)
             .GroupBy(change => change.TransactionHash)
             .SelectMany(group =>
@@ -194,11 +208,19 @@ public class EVMUSDtListener(
                         string.Equals(log.To, previous.To, StringComparison.OrdinalIgnoreCase) && log.Value == previous.Value &&
                         !existing.ContainsKey($"{legacyId}-log-{log.LogIndex}"));
                     if (legacyIndex < 0)
-                        throw new InvalidOperationException("Stored ERC-20 payment does not match the returned transfer logs.");
+                        throw new InvalidOperationException($"Stored ERC-20 payment {previous.TransactionId} does not match the returned transfer logs.");
                 }
-                return logs.Select((change, index) => new TransferMatchSnapshot(
-                    change.To.ToLowerInvariant(), change.From, change.To, change.Value,
-                    index == legacyIndex ? legacyId : $"{legacyId}-log-{change.LogIndex}"));
+                return logs.Select((change, index) =>
+                {
+                    var id = index == legacyIndex ? previous!.TransactionId : $"{legacyId}-log-{change.LogIndex}";
+                    if (existing.TryGetValue(id, out var stored))
+                    {
+                        if (stored.Value != change.Value || !string.Equals(stored.To, change.To, StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException($"Stored ERC-20 payment {stored.TransactionId} does not match the returned transfer log.");
+                        id = stored.TransactionId;
+                    }
+                    return new TransferMatchSnapshot(change.To.ToLowerInvariant(), change.From, change.To, change.Value, id);
+                });
             })
             .Where(match => destinationKeySet.Contains(match.DestinationKey))
             .DistinctBy(match => match.TransactionId)

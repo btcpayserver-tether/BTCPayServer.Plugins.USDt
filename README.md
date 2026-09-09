@@ -49,6 +49,9 @@ Multiple Transfer events in one transaction are credited separately. New
 transfers use a log-index suffix, keeping their identities stable even when the
 set of tracked destinations changes. Already stored legacy IDs are retained by
 matching the recipient and amount to a log not credited under a log-index ID.
+Replay matching ignores ID casing but preserves the exact stored ID. Identical
+repeated stored entries are tolerated; conflicting entries (including distinct
+stored IDs differing only in case) require reconciliation and stop processing.
 Missing/invalid indices, conflicting duplicates, and unmatched legacy payments
 stop processing rather than risk incorrect credit. Existing stored payments are
 not rewritten; previously missed historical logs require an explicit rescan.
