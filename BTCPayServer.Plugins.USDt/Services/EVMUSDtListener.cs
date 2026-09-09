@@ -173,21 +173,26 @@ public class EVMUSDtListener(
             .ToHashSet(StringComparer.Ordinal);
 
         var existing = (existingTransfers ?? []).ToDictionary(payment => payment.TransactionId);
-        // Match the stored recipient and amount: old RPC batches could return logs
-        // in a different order. Never assign an already credited log a new ID.
+        // New IDs must not depend on which invoice destinations remain tracked.
+        // Only reuse a legacy ID when it is already stored for a matching log.
         return changes
             .Where(change => !change.Removed)
             .OrderBy(change => change.LogIndex)
             .GroupBy(change => change.TransactionHash)
             .SelectMany(group =>
             {
-                var logs = group.DistinctBy(change => change.LogIndex ?? -1).ToArray();
+                if (group.Any(change => change.LogIndex is null || change.LogIndex < 0))
+                    throw new InvalidOperationException("ERC-20 transfer log has no valid log index.");
+                var logs = group.DistinctBy(change => change.LogIndex).ToArray();
+                if (group.Any(change => change != logs.Single(log => log.LogIndex == change.LogIndex)))
+                    throw new InvalidOperationException("Conflicting ERC-20 transfer logs have the same log index.");
                 var legacyId = $"{logs[0].TransactionHash.Replace("0x", "")}-{logs[0].TransactionIndex}";
-                var legacyIndex = 0;
+                var legacyIndex = -1;
                 if (existing.TryGetValue(legacyId, out var previous))
                 {
                     legacyIndex = Array.FindIndex(logs, log =>
-                        string.Equals(log.To, previous.To, StringComparison.OrdinalIgnoreCase) && log.Value == previous.Value);
+                        string.Equals(log.To, previous.To, StringComparison.OrdinalIgnoreCase) && log.Value == previous.Value &&
+                        !existing.ContainsKey($"{legacyId}-log-{log.LogIndex}"));
                     if (legacyIndex < 0)
                         throw new InvalidOperationException("Stored ERC-20 payment does not match the returned transfer logs.");
                 }
