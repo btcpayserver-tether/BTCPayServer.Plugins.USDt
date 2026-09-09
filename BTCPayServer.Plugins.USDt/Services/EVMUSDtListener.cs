@@ -128,8 +128,17 @@ public class EVMUSDtListener(
                     change.Event.Value,
                     change.Log.TransactionHash,
                     change.Log.TransactionIndex?.ToString() ?? string.Empty,
-                    change.Log.Removed)),
-                invoicesPerAddress.Keys)
+                    change.Log.Removed,
+                    change.Log.LogIndex?.Value)),
+                invoicesPerAddress.Keys,
+                invoicesPerAddress.Values.SelectMany(invoice => invoice.GetPayments(false))
+                    .Where(payment => payment.PaymentMethodId == paymentMethodId)
+                    .Select(payment =>
+                    {
+                        var details = (EVMUSDtPaymentData)handlers[paymentMethodId].ParsePaymentDetails(payment.Details);
+                        return new ExistingTransferSnapshot(details.TransactionId, details.To,
+                            Nethereum.Web3.Web3.Convert.ToWei(payment.Value, configuration.Divisibility));
+                    }))
             .Select(match => new USDtTransferMatch(
                 match.DestinationKey,
                 match.From,
@@ -155,21 +164,37 @@ public class EVMUSDtListener(
 
     internal static IReadOnlyCollection<TransferMatchSnapshot> ToTransferMatchSnapshots(
         IEnumerable<TransferLogSnapshot> changes,
-        IEnumerable<string> destinationKeys)
+        IEnumerable<string> destinationKeys,
+        IEnumerable<ExistingTransferSnapshot>? existingTransfers = null)
     {
         var destinationKeySet = destinationKeys
             .Where(address => !string.IsNullOrWhiteSpace(address))
             .Select(address => address.ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);
 
+        var existing = (existingTransfers ?? []).ToDictionary(payment => payment.TransactionId);
+        // Match the stored recipient and amount: old RPC batches could return logs
+        // in a different order. Never assign an already credited log a new ID.
         return changes
             .Where(change => !change.Removed)
-            .Select(change => new TransferMatchSnapshot(
-                change.To.ToLowerInvariant(),
-                change.From,
-                change.To,
-                change.Value,
-                $"{change.TransactionHash.Replace("0x", "")}-{change.TransactionIndex}"))
+            .OrderBy(change => change.LogIndex)
+            .GroupBy(change => change.TransactionHash)
+            .SelectMany(group =>
+            {
+                var logs = group.DistinctBy(change => change.LogIndex ?? -1).ToArray();
+                var legacyId = $"{logs[0].TransactionHash.Replace("0x", "")}-{logs[0].TransactionIndex}";
+                var legacyIndex = 0;
+                if (existing.TryGetValue(legacyId, out var previous))
+                {
+                    legacyIndex = Array.FindIndex(logs, log =>
+                        string.Equals(log.To, previous.To, StringComparison.OrdinalIgnoreCase) && log.Value == previous.Value);
+                    if (legacyIndex < 0)
+                        throw new InvalidOperationException("Stored ERC-20 payment does not match the returned transfer logs.");
+                }
+                return logs.Select((change, index) => new TransferMatchSnapshot(
+                    change.To.ToLowerInvariant(), change.From, change.To, change.Value,
+                    index == legacyIndex ? legacyId : $"{legacyId}-log-{change.LogIndex}"));
+            })
             .Where(match => destinationKeySet.Contains(match.DestinationKey))
             .DistinctBy(match => match.TransactionId)
             .ToArray();
@@ -188,7 +213,10 @@ public class EVMUSDtListener(
         BigInteger Value,
         string TransactionHash,
         string TransactionIndex,
-        bool Removed);
+        bool Removed,
+        BigInteger? LogIndex = null);
+
+    internal sealed record ExistingTransferSnapshot(string TransactionId, string To, BigInteger Value);
 
     internal sealed record TransferMatchSnapshot(
         string DestinationKey,
