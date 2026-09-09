@@ -40,6 +40,16 @@ USDt invoice destinations remain reserved and monitored after invoice expiration
 Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugins, and restart.
 
 ## 🧑‍💻 Developing
+### Ethereum ERC-20 support
+
+Ethereum USDt is already supported as `USDT-ETHEREUM`, using the six-decimal
+contract `0xdac17f958d2ee523a2206206994597c13d831ec7` on chain ID 1.
+The EVM listener queries ERC-20 Transfer logs and tracks confirmation counts.
+Multiple Transfer events in one transaction are credited separately. The first
+transfer retains the legacy payment ID; additional transfers use a log-index
+suffix so they are not discarded as duplicates. Existing stored payments are
+not rewritten; previously missed historical logs require an explicit rescan.
+
 ### Naming convention
 This plugin aims to cover USDt payment over different chains, a rigorous naming convention was implemented to ensure readability but also allow extensibility:
 
