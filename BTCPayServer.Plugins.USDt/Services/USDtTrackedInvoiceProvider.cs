@@ -32,11 +32,16 @@ public sealed class USDtTrackedInvoiceProvider
     }
 
     // Read complete payment history directly; monitoring snapshots may omit settled payments.
-    internal Task<InvoiceEntity[]> GetInvoicesWithPayments(
+    internal async Task<InvoiceEntity[]> GetInvoicesWithPayments(
         string[] invoiceIds,
         CancellationToken cancellationToken)
     {
-        return _invoiceSource.GetInvoices(invoiceIds, cancellationToken);
+        var invoices = await _invoiceSource.GetInvoices(invoiceIds, cancellationToken);
+        var missingInvoiceIds = invoiceIds.Except(invoices.Select(invoice => invoice.Id)).ToArray();
+        if (missingInvoiceIds.Length != 0)
+            throw new InvalidOperationException(
+                $"Unable to load USDt payment history for invoices: {string.Join(", ", missingInvoiceIds)}.");
+        return invoices;
     }
 
     public async Task<InvoiceEntity[]> GetTrackedInvoices(
