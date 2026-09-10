@@ -40,11 +40,12 @@ USDt invoice destinations remain reserved and monitored after invoice expiration
 Install the plugin from the BTCPay Server > Settings > Plugin > Available Plugins, and restart.
 
 ## 🧑‍💻 Developing
-### Ethereum ERC-20 support
+### EVM and TRON transfer detection
 
 Ethereum USDt is already supported as `USDT-ETHEREUM`, using the six-decimal
 contract `0xdac17f958d2ee523a2206206994597c13d831ec7` on chain ID 1.
-The EVM listener queries ERC-20 Transfer logs and tracks confirmation counts.
+Ethereum, Polygon, BSC, and TRON use the same transfer identity and replay rules.
+Their listeners query Transfer logs and track confirmation counts.
 Multiple Transfer events in one transaction are credited separately. New
 transfers use a log-index suffix, keeping their identities stable even when the
 set of tracked destinations changes. Already stored legacy IDs are retained by

@@ -866,23 +866,23 @@ public class FastTests : UnitTestBase
             "0x1111111111111111111111111111111111111111"
         };
 
-        var matches = EVMUSDtListener.ToTransferMatchSnapshots(
+        var matches = USDtTransferMatcher.ToTransferMatchSnapshots(
             [
-                new EVMUSDtListener.TransferLogSnapshot(
+                new USDtTransferMatcher.TransferLogSnapshot(
                     "0x742D35Cc6634C0532925a3b844Bc454e4438f44E",
                     "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                     123,
                     "0xabc",
                     "1",
                     false, 0),
-                new EVMUSDtListener.TransferLogSnapshot(
+                new USDtTransferMatcher.TransferLogSnapshot(
                     "0x9999999999999999999999999999999999999999",
                     "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                     456,
                     "0xdef",
                     "2",
                     false, 1),
-                new EVMUSDtListener.TransferLogSnapshot(
+                new USDtTransferMatcher.TransferLogSnapshot(
                     "0x1111111111111111111111111111111111111111",
                     "0xcccccccccccccccccccccccccccccccccccccccc",
                     789,

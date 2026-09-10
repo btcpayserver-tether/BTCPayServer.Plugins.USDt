@@ -39,6 +39,9 @@ public class TronUSDtListener(
         handlers,
         paymentService)
 {
+    private readonly USDtTrackedInvoiceProvider _trackedInvoiceProvider = trackedInvoiceProvider;
+    private readonly PaymentMethodHandlerDictionary _handlers = handlers;
+
     protected override IReadOnlyDictionary<PaymentMethodId, TronUSDtLikeConfigurationItem> GetConfigurations()
     {
         return usdtPluginConfiguration.TronUSDtLikeConfigurationItems;
@@ -77,8 +80,8 @@ public class TronUSDtListener(
         CancellationToken stoppingToken)
     {
         var web3Client = tronUSDtRpcProvider.GetWeb3Client(paymentMethodId);
-        var contractAddress =
-            usdtPluginConfiguration.TronUSDtLikeConfigurationItems[paymentMethodId].SmartContractAddress;
+        var configuration = usdtPluginConfiguration.TronUSDtLikeConfigurationItems[paymentMethodId];
+        var contractAddress = configuration.SmartContractAddress;
         var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(
             TronUSDtAddressHelper.Base58ToHex(contractAddress));
         var changes = await transferEvent.GetAllChangesAsync(
@@ -87,16 +90,46 @@ public class TronUSDtListener(
         if (changes == null)
             throw new InvalidOperationException($"Unable to get changes {block.Number}");
 
-        return changes
+        var matchedChanges = changes
             .Where(t => !t.Log.Removed && TronUSDtAddressHelper.HexToBase58(t.Log.Address)
-                .Equals(contractAddress, StringComparison.InvariantCultureIgnoreCase))
-            .Select(t => new USDtTransferMatch(
-                TronUSDtAddressHelper.HexToBase58(t.Event.To).ToLowerInvariant(),
-                TronUSDtAddressHelper.HexToBase58(t.Event.From),
-                TronUSDtAddressHelper.HexToBase58(t.Event.To),
+                .Equals(contractAddress, StringComparison.Ordinal))
+            .Where(t => invoicesPerAddress.ContainsKey(TronUSDtAddressHelper.HexToBase58(t.Event.To).ToLowerInvariant()))
+            .Select(t => new USDtTransferMatcher.TransferLogSnapshot(
+                t.Event.To,
+                t.Event.From,
                 t.Event.Value,
-                $"{t.Log.TransactionHash.Replace("0x", "")}-{t.Log.TransactionIndex}"))
-            .Where(match => invoicesPerAddress.ContainsKey(match.DestinationKey))
+                t.Log.TransactionHash,
+                t.Log.TransactionIndex?.ToString() ?? string.Empty,
+                t.Log.Removed,
+                t.Log.LogIndex?.Value))
+            .ToArray();
+        if (matchedChanges.Length == 0)
+            return [];
+
+        var invoiceIds = matchedChanges
+            .Select(change => invoicesPerAddress[TronUSDtAddressHelper.HexToBase58(change.To).ToLowerInvariant()].Id)
+            .Distinct()
+            .ToArray();
+        var invoicesWithPayments = await _trackedInvoiceProvider.GetInvoicesWithPayments(invoiceIds, stoppingToken);
+
+        return USDtTransferMatcher.ToTransferMatchSnapshots(
+                matchedChanges,
+                matchedChanges.Select(change => change.To),
+                invoicesWithPayments.SelectMany(invoice => invoice.GetPayments(false))
+                    .Where(payment => payment.PaymentMethodId == paymentMethodId)
+                    .Select(payment =>
+                    {
+                        var details = (TronUSDtLikePaymentData)_handlers[paymentMethodId].ParsePaymentDetails(payment.Details);
+                        return new USDtTransferMatcher.ExistingTransferSnapshot(details.TransactionId,
+                            TronUSDtAddressHelper.Base58ToHex(details.To),
+                            Nethereum.Web3.Web3.Convert.ToWei(payment.Value, configuration.Divisibility));
+                    }))
+            .Select(match => new USDtTransferMatch(
+                TronUSDtAddressHelper.HexToBase58(match.To).ToLowerInvariant(),
+                TronUSDtAddressHelper.HexToBase58(match.From),
+                TronUSDtAddressHelper.HexToBase58(match.To),
+                match.TotalAmount,
+                match.TransactionId))
             .ToArray();
     }
 
