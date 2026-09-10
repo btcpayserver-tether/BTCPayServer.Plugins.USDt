@@ -31,6 +31,14 @@ public sealed class USDtTrackedInvoiceProvider
         _timeProvider = timeProvider;
     }
 
+    // Read complete payment history directly; monitoring snapshots may omit settled payments.
+    internal Task<InvoiceEntity[]> GetInvoicesWithPayments(
+        string[] invoiceIds,
+        CancellationToken cancellationToken)
+    {
+        return _invoiceSource.GetInvoices(invoiceIds, cancellationToken);
+    }
+
     public async Task<InvoiceEntity[]> GetTrackedInvoices(
         PaymentMethodId paymentMethodId,
         CancellationToken cancellationToken = default)

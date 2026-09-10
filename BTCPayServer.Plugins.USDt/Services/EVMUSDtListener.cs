@@ -43,6 +43,7 @@ public class EVMUSDtListener(
     internal const int DestinationFilterBatchSize = 20;
 
     private readonly ILogger<EVMUSDtListener> _logger = logger;
+    private readonly USDtTrackedInvoiceProvider _trackedInvoiceProvider = trackedInvoiceProvider;
 
     protected override IReadOnlyDictionary<PaymentMethodId, EVMUSDtLikeConfigurationItem> GetConfigurations()
     {
@@ -121,8 +122,27 @@ public class EVMUSDtListener(
             await Task.Delay(250, stoppingToken);
         } while (tries++ < 3);
 
+        var matchedChanges = changes
+            .Where(change => !change.Log.Removed &&
+                             invoicesPerAddress.ContainsKey(change.Event.To.ToLowerInvariant()))
+            .ToArray();
+        if (matchedChanges.Length == 0)
+            return [];
+
+        // Monitored expired invoices can contain only pending payments. Replay needs
+        // settled payments too, including legacy IDs and already credited log IDs.
+        var invoiceIds = matchedChanges
+            .Select(change => invoicesPerAddress[change.Event.To.ToLowerInvariant()].Id)
+            .Distinct()
+            .ToArray();
+        var invoicesWithPayments = await _trackedInvoiceProvider.GetInvoicesWithPayments(invoiceIds, stoppingToken);
+        var missingInvoiceIds = invoiceIds.Except(invoicesWithPayments.Select(invoice => invoice.Id)).ToArray();
+        if (missingInvoiceIds.Length != 0)
+            throw new InvalidOperationException(
+                $"Unable to load ERC-20 payment history for invoices: {string.Join(", ", missingInvoiceIds)}.");
+
         return ToTransferMatchSnapshots(
-                changes.Select(change => new TransferLogSnapshot(
+                matchedChanges.Select(change => new TransferLogSnapshot(
                     change.Event.To,
                     change.Event.From,
                     change.Event.Value,
@@ -131,7 +151,7 @@ public class EVMUSDtListener(
                     change.Log.Removed,
                     change.Log.LogIndex?.Value)),
                 invoicesPerAddress.Keys,
-                invoicesPerAddress.Values.SelectMany(invoice => invoice.GetPayments(false))
+                invoicesWithPayments.SelectMany(invoice => invoice.GetPayments(false))
                     .Where(payment => payment.PaymentMethodId == paymentMethodId)
                     .Select(payment =>
                     {
