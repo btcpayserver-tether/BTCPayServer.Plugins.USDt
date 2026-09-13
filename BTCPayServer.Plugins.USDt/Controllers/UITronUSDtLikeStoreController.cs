@@ -86,7 +86,7 @@ public class UITronUSDtLikeStoreController(
                     .ToString(CultureInfo.InvariantCulture)
             });
 
-        var addresses = matchedPaymentMethodConfig.Addresses
+        var addresses = (matchedPaymentMethodConfig.Addresses ?? [])
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var balances = await tronUSDtRpcProvider.GetBalances(paymentMethodId, addresses);
@@ -126,14 +126,6 @@ public class UITronUSDtLikeStoreController(
         return balances.FirstOrDefault(balance => balance.Address == address).Balance;
     }
 
-    internal static string? FindDuplicateAddress(IEnumerable<string> addresses)
-    {
-        return addresses
-            .GroupBy(address => address, StringComparer.Ordinal)
-            .FirstOrDefault(group => group.Skip(1).Any())?
-            .Key;
-    }
-
     [HttpPost("{paymentMethodId}/addresses/{address}/delete")]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public async Task<IActionResult> DeleteAddress(string storeId, PaymentMethodId paymentMethodId, string address)
@@ -148,7 +140,8 @@ public class UITronUSDtLikeStoreController(
         if (currentPaymentMethodConfig is null) return NotFound();
 
         currentPaymentMethodConfig.MarkActivated();
-        currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
+        currentPaymentMethodConfig.Addresses = (currentPaymentMethodConfig.Addresses ?? [])
+            .Except(new[] { address }, StringComparer.Ordinal).ToArray();
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
@@ -179,26 +172,21 @@ public class UITronUSDtLikeStoreController(
 
         if (command == "add-addresses" || !string.IsNullOrEmpty(viewModel.Address))
         {
-            var submittedAddresses = (viewModel.Address ?? string.Empty)
-                .Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(TronUSDtAddressHelper.IsValid)
-                .ToArray();
-            var duplicateAddress = FindDuplicateAddress(submittedAddresses);
-
-            if (duplicateAddress is not null)
+            // Only the address field belongs to this form.
+            ModelState.Remove(nameof(viewModel.Enabled));
+            ModelState.Remove(nameof(viewModel.PaymentLinkFormat));
+            ModelState.Remove(nameof(viewModel.PaymentLinkTemplate));
+            var submitted = (viewModel.Address ?? string.Empty)
+                .Split(new char[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (!USDtAddressPool.TryNormalize(submitted, false, out var submittedAddresses, out var addressError))
             {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = $"Duplicate address: {duplicateAddress}. Remove duplicate entries and try again.",
-                    Severity = StatusMessageModel.StatusSeverity.Error
-                });
-
-                return RedirectToAction("GetStoreTronUSDtLikePaymentMethod", new { storeId = store.Id, paymentMethodId });
+                ModelState.AddModelError(nameof(viewModel.Address), addressError!);
+                return await GetStoreTronUSDtLikePaymentMethod(paymentMethodId);
             }
 
+            var currentAddresses = currentPaymentMethodConfig.Addresses ?? [];
             var addresses = submittedAddresses
-                .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false)
-                .ToArray();
+                .Except(currentAddresses, StringComparer.Ordinal).ToArray();
             
             if(addresses.Any() == false)
             {
@@ -213,7 +201,7 @@ public class UITronUSDtLikeStoreController(
             
             currentPaymentMethodConfig.Addresses =
             [
-                .. currentPaymentMethodConfig.Addresses,
+                .. currentAddresses,
                 .. addresses
             ];
             currentPaymentMethodConfig.MarkActivated();

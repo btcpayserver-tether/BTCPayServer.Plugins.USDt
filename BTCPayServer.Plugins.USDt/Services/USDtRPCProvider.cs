@@ -87,12 +87,11 @@ public abstract class USDtRPCProvider<TConfigurationItem>(
     {
         var configuration = GetConfigurations()[pmi];
         var tokenService = new StandardTokenService(GetWeb3Client(pmi), GetTokenContractAddress(configuration));
-        var normalizedAddresses = addresses.Select(address => (address, normalized: NormalizeAddress(address, configuration)));
-
         List<(string, decimal?)> results = [];
-        foreach (var (address, normalizedAddress) in normalizedAddresses)
+        foreach (var address in addresses)
             try
             {
+                var normalizedAddress = NormalizeAddress(address, configuration);
                 var balanceResult = await tokenService.BalanceOfQueryAsync(normalizedAddress);
                 var divisor = BigInteger.Pow(10, configuration.Divisibility);
                 var quotient = balanceResult / divisor;

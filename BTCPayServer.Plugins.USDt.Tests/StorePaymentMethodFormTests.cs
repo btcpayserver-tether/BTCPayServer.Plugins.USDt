@@ -223,6 +223,124 @@ public class StorePaymentMethodFormTests
         Assert.False((await host.ReadStore()).GetStoreBlob().IsExcluded(FormHost.Id(chain)));
     }
 
+    [Theory]
+    [InlineData("ETHEREUM", "duplicates")]
+    [InlineData("ETHEREUM", "mixed-case-duplicates")]
+    [InlineData("ETHEREUM", "invalid")]
+    [InlineData("TRON", "duplicates")]
+    [InlineData("TRON", "invalid")]
+    public async Task InvalidAddressBatchIsPreservedWithoutPartiallySaving(string chain, string scenario)
+    {
+        using var host = await FormHost.Create();
+        var before = await host.ReadStore();
+        var address = chain == "TRON" ? "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL"
+            : "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+        var second = scenario switch
+        {
+            "invalid" => "invalid-address",
+            "mixed-case-duplicates" => "0x" + address[2..].ToUpperInvariant(),
+            _ => address
+        };
+        var submitted = address + ", " + second;
+        var form = (await host.GetPage(chain)).QuerySelector("#Address")!.Closest("form")!;
+        ((IHtmlInputElement)form.QuerySelector("#Address")!).Value = submitted;
+        using var response = await host.Submit(form);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await Parse(response);
+        Assert.Equal(submitted, ((IHtmlInputElement)page.QuerySelector("#Address")!).Value);
+        Assert.Contains(scenario == "invalid" ? "valid" : "Duplicate address",
+            page.QuerySelector("[data-valmsg-for='Address']")!.TextContent);
+        var after = await host.ReadStore();
+        Assert.Equal(before.StoreBlob, after.StoreBlob);
+        Assert.Equal(before.DerivationStrategies, after.DerivationStrategies);
+    }
+
+    [Theory]
+    [InlineData("ETHEREUM")]
+    [InlineData("TRON")]
+    public async Task AddressValidationIgnoresFieldsFromTheSettingsForm(string chain)
+    {
+        using var host = await FormHost.Create();
+        var before = await host.ReadStore();
+        var form = (await host.GetPage(chain)).QuerySelector("#Address")!.Closest("form")!;
+        using var response = await host.Submit(form, new()
+        {
+            ["Address"] = "invalid-address", ["Enabled"] = "bogus",
+            ["PaymentLinkFormat"] = "bogus", ["PaymentLinkTemplate"] = "wallet:{unknown}"
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await Parse(response);
+        Assert.NotEmpty(page.QuerySelector("[data-valmsg-for='Address']")!.TextContent);
+        Assert.True(((IHtmlInputElement)page.QuerySelector("#Enabled")!).IsChecked);
+        Assert.Equal("0", ((IHtmlSelectElement)page.QuerySelector("#PaymentLinkFormat")!).Value);
+        Assert.Equal("", ((IHtmlTextAreaElement)page.QuerySelector("#PaymentLinkTemplate")!).Value);
+        var after = await host.ReadStore();
+        Assert.Equal(before.StoreBlob, after.StoreBlob);
+        Assert.Equal(before.DerivationStrategies, after.DerivationStrategies);
+    }
+
+    [Theory]
+    [InlineData("ETHEREUM", "duplicate")]
+    [InlineData("ETHEREUM", "mixed-case")]
+    [InlineData("TRON", "duplicate")]
+    [InlineData("TRON", "invalid")]
+    public async Task LegacyAddressesCanBeViewedDisabledAndRemoved(string chain, string scenario)
+    {
+        using var host = await FormHost.Create();
+        var address = FormHost.Address(chain);
+        var addresses = scenario switch
+        {
+            "invalid" => new[] { "invalid-address" },
+            "mixed-case" => new[] { address, "0x" + address[2..].ToUpperInvariant() },
+            _ => new[] { address, address }
+        };
+        await host.SetAddresses(chain, addresses);
+        var page = await host.GetPage(chain);
+        Assert.Single(page.QuerySelectorAll("#StoreUsersList tr"));
+        if (scenario == "invalid") Assert.Contains("N/A", page.Body!.TextContent);
+
+        var form = SaveForm(page);
+        ((IHtmlInputElement)form.QuerySelector("#Enabled")!).IsChecked = false;
+        using var disabled = await host.Submit(form);
+        Assert.Equal(HttpStatusCode.Redirect, disabled.StatusCode);
+        Assert.True((await host.ReadStore()).GetStoreBlob().IsExcluded(FormHost.Id(chain)));
+
+        page = await host.GetPage(chain);
+        using var removed = await host.Submit(page.QuerySelector("#StoreUsersList form")!);
+        Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);
+        Assert.Empty(host.Config(await host.ReadStore(), chain).Addresses);
+    }
+
+    [Theory]
+    [InlineData("ETHEREUM")]
+    [InlineData("TRON")]
+    public async Task AddingAnExistingAddressDoesNotDuplicateOrChangeSettings(string chain)
+    {
+        using var host = await FormHost.Create();
+        var before = await host.ReadStore();
+        var form = (await host.GetPage(chain)).QuerySelector("#Address")!.Closest("form")!;
+        var address = FormHost.Address(chain);
+        ((IHtmlInputElement)form.QuerySelector("#Address")!).Value = chain == "TRON"
+            ? address : "0x" + address[2..].ToUpperInvariant();
+        using var response = await host.Submit(form);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var after = await host.ReadStore();
+        Assert.Equal(before.DerivationStrategies, after.DerivationStrategies);
+        Assert.Equal(before.StoreBlob, after.StoreBlob);
+        Assert.Contains("No addresses were added", (await host.GetPage(chain)).Body!.TextContent);
+    }
+
+    [Fact]
+    public async Task TronApiCanReadLegacyDuplicateAddresses()
+    {
+        using var host = await FormHost.Create();
+        await host.SetAddresses("TRON", [FormHost.Address("TRON"), FormHost.Address("TRON")]);
+        var data = await host.GetTronInformation();
+        var address = Assert.Single(data["addresses"]!);
+        Assert.Equal(FormHost.Address("TRON"), (string?)address["value"]);
+        Assert.Equal(0m, (decimal?)address["balance"]);
+    }
+
     private static IElement SaveForm(IHtmlDocument page) => page.QuerySelector("#SaveButton")!.Closest("form")!;
     private static async Task<IHtmlDocument> Parse(HttpResponseMessage response) =>
         await new HtmlParser().ParseDocumentAsync(await response.Content.ReadAsStringAsync());
@@ -303,12 +421,19 @@ public class StorePaymentMethodFormTests
                 services.AddScoped<BTCPayServer.Security.ContentSecurityPolicies>();
                 services.AddSingleton<HtmlSanitizer>();
                 services.AddLocalization();
+                services.AddCors(options => options.AddPolicy(CorsPolicies.All,
+                    policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
                 services.AddTransient<Microsoft.AspNetCore.Mvc.Localization.ViewLocalizer>();
                 services.AddTransient<IStringLocalizer, StringLocalizer<StorePaymentMethodFormTests>>();
-                services.AddAuthentication(AuthenticationSchemes.Cookie)
+                var authentication = services.AddAuthentication(AuthenticationSchemes.Cookie)
                     .AddScheme<AuthenticationSchemeOptions, TestAuthentication>(AuthenticationSchemes.Cookie, _ => { });
-                services.AddAuthorization(options => options.AddPolicy(Policies.CanModifyStoreSettings,
-                    policy => policy.RequireAuthenticatedUser()));
+                foreach (var scheme in AuthenticationSchemes.Greenfield.Split(','))
+                    authentication.AddScheme<AuthenticationSchemeOptions, TestAuthentication>(scheme, _ => { });
+                services.AddAuthorization(options =>
+                {
+                    options.AddPolicy(Policies.CanModifyStoreSettings, policy => policy.RequireAuthenticatedUser());
+                    options.AddPolicy(Policies.CanViewStoreSettings, policy => policy.RequireAuthenticatedUser());
+                });
                 services.AddControllersWithViews(options =>
                     {
                         options.ModelBinderProviders.Insert(0, new DefaultModelBinderProvider());
@@ -323,6 +448,7 @@ public class StorePaymentMethodFormTests
             }).Configure(app =>
             {
                 app.UseRouting();
+                app.UseCors();
                 app.UseAuthentication();
                 app.UseAuthorization();
                 app.Use(async (context, next) =>
@@ -341,6 +467,23 @@ public class StorePaymentMethodFormTests
         {
             using var db = _database.CreateContext();
             return await db.Stores.SingleAsync(store => store.Id == StoreId);
+        }
+
+        public async Task SetAddresses(string chain, string[] addresses)
+        {
+            using var db = _database.CreateContext();
+            var store = await db.Stores.SingleAsync(store => store.Id == StoreId);
+            var config = Config(store, chain);
+            config.Addresses = addresses;
+            store.SetPaymentMethodConfig(Handlers[Id(chain)], config);
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<JObject> GetTronInformation()
+        {
+            using var response = await _client.GetAsync($"/api/v1/stores/{StoreId}/tronUSDtlike/{Id("TRON")}");
+            response.EnsureSuccessStatusCode();
+            return JObject.Parse(await response.Content.ReadAsStringAsync());
         }
 
         public USDtPaymentMethodConfig Config(StoreData store, string chain) => chain == "TRON"
@@ -433,7 +576,9 @@ public class StorePaymentMethodFormTests
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, ControllerFeature feature)
         {
             foreach (var controller in feature.Controllers.ToArray())
-                if (controller.AsType() != typeof(UIEVMUSDtLikeStoreController) && controller.AsType() != typeof(UITronUSDtLikeStoreController))
+                if (controller.AsType() != typeof(UIEVMUSDtLikeStoreController) &&
+                    controller.AsType() != typeof(UITronUSDtLikeStoreController) &&
+                    controller.AsType() != typeof(GreenfieldTronUSDtLikeStoreController))
                     feature.Controllers.Remove(controller);
         }
     }

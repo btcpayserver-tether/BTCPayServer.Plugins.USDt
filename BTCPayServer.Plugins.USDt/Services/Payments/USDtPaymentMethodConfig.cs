@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Payments;
@@ -8,6 +9,7 @@ public class USDtPaymentMethodConfig
 {
     public string[] Addresses { get; set; } = [];
     public bool Activated { get; set; }
+    protected virtual StringComparer AddressComparer => StringComparer.Ordinal;
 
     public void MarkActivated()
     {
@@ -34,7 +36,7 @@ public class USDtPaymentMethodConfig
         USDtTrackedInvoiceProvider trackedInvoiceProvider)
     {
         var allReservedAddresses = await GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
-        return Addresses.Except(allReservedAddresses).FirstOrDefault();
+        return (Addresses ?? []).Except(allReservedAddresses, AddressComparer).FirstOrDefault();
     }
 
     public static async Task<string[]> GetReservedAddresses(PaymentMethodId paymentMethodId,

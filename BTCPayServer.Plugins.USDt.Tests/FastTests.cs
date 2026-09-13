@@ -194,19 +194,6 @@ public class FastTests : UnitTestBase
     }
 
     [Fact]
-    public void TronStoreSettingsDetectDuplicateSubmittedAddresses()
-    {
-        var duplicate = UITronUSDtLikeStoreController.FindDuplicateAddress(
-        [
-            "TQQvC5DuajPSPnDN9UA535Ts4tC1uCJUvJ",
-            "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d",
-            "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d"
-        ]);
-
-        Assert.Equal("TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d", duplicate);
-    }
-
-    [Fact]
     public void TronStoreSettingsUsesFirstBalanceForLegacyDuplicates()
     {
         const string address = "TMsbHFUiGrAw13HTqkPekgrseXogWioQ3d";
