@@ -17,20 +17,23 @@ public static class TronUSDtAddressHelper
     public static string Base58ToHex(string base58String)
     {
         var decodedData = new Base58CheckEncoder().DecodeData(base58String);
-        if (decodedData[0] != 0x41)
+        if (decodedData.Length != 21 || decodedData[0] != 0x41)
             throw new FormatException();
 
         var hexString = ByteArrayToHex(decodedData.Skip(1).ToArray());
         return "0x" + hexString;
     }
 
-    public static bool IsValid(string tron)
+    public static bool IsValid(string? tron)
     {
+        if (string.IsNullOrWhiteSpace(tron))
+            return false;
+
         try
         {
             var bytes = new Base58CheckEncoder().DecodeData(tron);
 
-            return bytes[0] == 0x41;
+            return bytes.Length == 21 && bytes[0] == 0x41;
         }
         catch (FormatException)
         {

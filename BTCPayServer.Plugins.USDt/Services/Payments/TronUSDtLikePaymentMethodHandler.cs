@@ -86,6 +86,15 @@ public class TronUSDtLikePaymentMethodHandler(
     public Task ValidatePaymentMethodConfig(PaymentMethodConfigValidationContext validationContext)
     {
         var config = ParsePaymentMethodConfig(validationContext.Config);
+        // The blob serializer ignores null properties, so inspect an explicit
+        // null before it can be mistaken for an intentionally empty pool.
+        var addressToken = (validationContext.Config as JObject)?.GetValue(nameof(config.Addresses), StringComparison.OrdinalIgnoreCase);
+        if (USDtAddressPool.TryNormalize(addressToken?.Type == JTokenType.Null ? null : config.Addresses,
+                false, out var addresses, out var addressError))
+            config.Addresses = addresses;
+        else
+            validationContext.ModelState.AddModelError(nameof(config.Addresses), addressError!);
+
         var previousConfig = validationContext.PreviousConfig is null
             ? null
             : ParsePaymentMethodConfig(validationContext.PreviousConfig);

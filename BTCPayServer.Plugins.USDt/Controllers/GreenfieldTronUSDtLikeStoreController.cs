@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AngleSharp.Text;
@@ -43,8 +44,10 @@ public class GreenfieldTronUSDtLikeStoreController(
         if (matchedPaymentMethodConfig == null)
             return NotFound();
 
-        var balances =
-            await tronUSDtRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+        var addresses = (matchedPaymentMethodConfig.Addresses ?? [])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var balances = await tronUSDtRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
             await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
 
@@ -53,7 +56,7 @@ public class GreenfieldTronUSDtLikeStoreController(
             StoreId = StoreData.Id,
             PaymentMethodId = paymentMethodId.ToString(),
             Enabled = !excludeFilters.Match(paymentMethodId),
-            Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
+            Addresses = addresses.Select(s =>
                 new TronUSDtPaymentMethodInformation.TronUSDtPaymentMethodAddressInformation()
                 {
                     Available = reservedAddresses.Contains(s) == false,

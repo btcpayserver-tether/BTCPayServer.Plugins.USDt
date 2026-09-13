@@ -87,8 +87,10 @@ public class UIEVMUSDtLikeStoreController(
                     .ToString(CultureInfo.InvariantCulture)
             });
 
-        var balances =
-            await evmUsdTRpcProvider.GetBalances(paymentMethodId, [.. matchedPaymentMethodConfig.Addresses]);
+        var addresses = (matchedPaymentMethodConfig.Addresses ?? [])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var balances = await evmUsdTRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
             await EVMUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
 
@@ -106,10 +108,10 @@ public class UIEVMUSDtLikeStoreController(
             TemplatePreviewChainId = config.ChainId.ToString(CultureInfo.InvariantCulture),
             TemplatePreviewAmountUnits = USDtPaymentLinkFormats.ToBaseUnits(12.34m, config.Divisibility)
                 .ToString(CultureInfo.InvariantCulture),
-            Addresses = matchedPaymentMethodConfig.Addresses.Select(s =>
+            Addresses = addresses.Select(s =>
                 new EditEVMUSDtPaymentMethodViewModel.EditEVMUSDtPaymentMethodAddressViewModel
                 {
-                    Available = reservedAddresses.Contains(s) == false,
+                    Available = !reservedAddresses.Contains(s, StringComparer.OrdinalIgnoreCase),
                     Balance = balances.Single(x => x.Item1 == s).Item2 == null
                         ? "N/A"
                         : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae"),
@@ -132,7 +134,8 @@ public class UIEVMUSDtLikeStoreController(
         if (currentPaymentMethodConfig is null) return NotFound();
 
         currentPaymentMethodConfig.MarkActivated();
-        currentPaymentMethodConfig.Addresses = currentPaymentMethodConfig.Addresses.Except(new[] { address }).ToArray();
+        currentPaymentMethodConfig.Addresses = (currentPaymentMethodConfig.Addresses ?? [])
+            .Except(new[] { address }, StringComparer.OrdinalIgnoreCase).ToArray();
         StoreData.SetPaymentMethodConfig(handlers[paymentMethodId], currentPaymentMethodConfig);
         store.SetStoreBlob(blob);
         await storeRepository.UpdateStore(store);
@@ -149,8 +152,8 @@ public class UIEVMUSDtLikeStoreController(
 
     [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditEVMUSDtPaymentMethodViewModel viewModel,
-        PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditUSDtPaymentMethodInputModel viewModel,
+        PaymentMethodId paymentMethodId, string? command = null)
     {
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
@@ -160,12 +163,23 @@ public class UIEVMUSDtLikeStoreController(
         var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         currentPaymentMethodConfig ??= new EVMUSDtPaymentMethodConfig();
 
-        if (string.IsNullOrEmpty(viewModel.Address) == false)
+        if (command == "add-addresses" || !string.IsNullOrEmpty(viewModel.Address))
         {
-            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(EVMAddressHelper.IsValid)
-                .Select(a => a.ToLowerInvariant())
-                .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
+            // Only the address field belongs to this form.
+            ModelState.Remove(nameof(viewModel.Enabled));
+            ModelState.Remove(nameof(viewModel.PaymentLinkFormat));
+            ModelState.Remove(nameof(viewModel.PaymentLinkTemplate));
+            var submitted = (viewModel.Address ?? string.Empty)
+                .Split(new char[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (!USDtAddressPool.TryNormalize(submitted, true, out var submittedAddresses, out var addressError))
+            {
+                ModelState.AddModelError(nameof(viewModel.Address), addressError!);
+                return await GetStoreEVMUSDtLikePaymentMethod(paymentMethodId);
+            }
+
+            var currentAddresses = currentPaymentMethodConfig.Addresses ?? [];
+            var addresses = submittedAddresses
+                .Except(currentAddresses, StringComparer.OrdinalIgnoreCase).ToArray();
 
             if(addresses.Any() == false)
             {
@@ -180,7 +194,7 @@ public class UIEVMUSDtLikeStoreController(
 
             currentPaymentMethodConfig.Addresses =
             [
-                .. currentPaymentMethodConfig.Addresses,
+                .. currentAddresses,
                 .. addresses
             ];
             currentPaymentMethodConfig.MarkActivated();
@@ -215,16 +229,21 @@ public class UIEVMUSDtLikeStoreController(
                         configuration.Divisibility,
                         configuration.SmartContractAddress.ToLowerInvariant(),
                         configuration.ChainId))
-                : "The selected payment link format is invalid.";
+                : null;
             if (validationError is not null)
             {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = validationError,
-                    Severity = StatusMessageModel.StatusSeverity.Error
-                });
-                return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod),
-                    new { storeId = store.Id, paymentMethodId });
+                ModelState.AddModelError(
+                    viewModel.PaymentLinkFormat == USDtPaymentLinkFormat.Custom
+                        ? nameof(viewModel.PaymentLinkTemplate)
+                        : nameof(viewModel.PaymentLinkFormat), validationError);
+            }
+            if (!ModelState.IsValid)
+            {
+                // Checkbox helpers cannot render a malformed Boolean. Keep its
+                // validation error, but display the stored Enabled value.
+                if (ModelState.TryGetValue(nameof(viewModel.Enabled), out var enabledState) && enabledState.Errors.Count > 0)
+                    enabledState.RawValue = null;
+                return await GetStoreEVMUSDtLikePaymentMethod(paymentMethodId);
             }
 
             var messages = new List<string>();
