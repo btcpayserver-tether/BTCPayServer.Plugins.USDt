@@ -149,8 +149,8 @@ public class UIEVMUSDtLikeStoreController(
 
     [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditEVMUSDtPaymentMethodViewModel viewModel,
-        PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetStoreEVMUSDtLikePaymentMethod(EditUSDtPaymentMethodInputModel viewModel,
+        PaymentMethodId paymentMethodId, string? command = null)
     {
         if (!pluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
@@ -160,9 +160,9 @@ public class UIEVMUSDtLikeStoreController(
         var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<EVMUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         currentPaymentMethodConfig ??= new EVMUSDtPaymentMethodConfig();
 
-        if (string.IsNullOrEmpty(viewModel.Address) == false)
+        if (command == "add-addresses" || !string.IsNullOrEmpty(viewModel.Address))
         {
-            var addresses = viewModel.Address.Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            var addresses = (viewModel.Address ?? string.Empty).Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(EVMAddressHelper.IsValid)
                 .Select(a => a.ToLowerInvariant())
                 .Where(s => currentPaymentMethodConfig.Addresses.Contains(s) == false).ToArray();
@@ -215,16 +215,21 @@ public class UIEVMUSDtLikeStoreController(
                         configuration.Divisibility,
                         configuration.SmartContractAddress.ToLowerInvariant(),
                         configuration.ChainId))
-                : "The selected payment link format is invalid.";
+                : null;
             if (validationError is not null)
             {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = validationError,
-                    Severity = StatusMessageModel.StatusSeverity.Error
-                });
-                return RedirectToAction(nameof(GetStoreEVMUSDtLikePaymentMethod),
-                    new { storeId = store.Id, paymentMethodId });
+                ModelState.AddModelError(
+                    viewModel.PaymentLinkFormat == USDtPaymentLinkFormat.Custom
+                        ? nameof(viewModel.PaymentLinkTemplate)
+                        : nameof(viewModel.PaymentLinkFormat), validationError);
+            }
+            if (!ModelState.IsValid)
+            {
+                // Checkbox helpers cannot render a malformed Boolean. Keep its
+                // validation error, but display the stored Enabled value.
+                if (ModelState.TryGetValue(nameof(viewModel.Enabled), out var enabledState) && enabledState.Errors.Count > 0)
+                    enabledState.RawValue = null;
+                return await GetStoreEVMUSDtLikePaymentMethod(paymentMethodId);
             }
 
             var messages = new List<string>();

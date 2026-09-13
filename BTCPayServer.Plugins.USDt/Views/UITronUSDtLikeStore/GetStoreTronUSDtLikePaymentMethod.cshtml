@@ -39,6 +39,7 @@
               asp-route-storeId="@Context.GetRouteValue("storeId")"
               asp-route-paymentMethodId="@Context.GetRouteValue("paymentMethodId")"
               class="mt-4" enctype="multipart/form-data">
+            <input type="hidden" name="command" value="add-addresses" />
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <input asp-for="Address" type="text" class="form-control" placeholder="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL" style="flex: 1 1 14rem">
                 <button type="submit" role="button" class="btn btn-primary text-nowrap flex-grow-1 flex-sm-grow-0">Add address(es)</button>
@@ -151,6 +152,7 @@
                 <label asp-for="PaymentLinkTemplate" class="form-label">Custom payment link template</label>
                 <textarea asp-for="PaymentLinkTemplate" class="form-control" rows="3" maxlength="2048"
                           placeholder="tron:{to}?amount={amount}"></textarea>
+                <span asp-validation-for="PaymentLinkTemplate" class="text-danger"></span>
                 <div class="form-text">
                     Required placeholder: <code>{to}</code>. Available placeholders:
                     <code>{to}</code>, <code>{amount}</code>, <code>{amountUnits}</code>,

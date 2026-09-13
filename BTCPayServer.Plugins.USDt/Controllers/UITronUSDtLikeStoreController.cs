@@ -165,8 +165,8 @@ public class UITronUSDtLikeStoreController(
 
     [HttpPost("{paymentMethodId}")]
     [DisableRequestSizeLimit]
-    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(EditTronUSDtPaymentMethodViewModel viewModel,
-        PaymentMethodId paymentMethodId)
+    public async Task<IActionResult> GetStoreTronUSDtLikePaymentMethod(EditUSDtPaymentMethodInputModel viewModel,
+        PaymentMethodId paymentMethodId, string? command = null)
     {
         if (!pluginConfiguration.TronUSDtLikeConfigurationItems.TryGetValue(paymentMethodId, out var configuration))
             return NotFound();
@@ -177,9 +177,9 @@ public class UITronUSDtLikeStoreController(
         var currentPaymentMethodConfig = StoreData.GetPaymentMethodConfig<TronUSDtPaymentMethodConfig>(paymentMethodId, handlers);
         currentPaymentMethodConfig ??= new TronUSDtPaymentMethodConfig();
 
-        if (string.IsNullOrEmpty(viewModel.Address) == false)
+        if (command == "add-addresses" || !string.IsNullOrEmpty(viewModel.Address))
         {
-            var submittedAddresses = viewModel.Address
+            var submittedAddresses = (viewModel.Address ?? string.Empty)
                 .Split(new char[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(TronUSDtAddressHelper.IsValid)
                 .ToArray();
@@ -249,16 +249,21 @@ public class UITronUSDtLikeStoreController(
                         12.34m,
                         configuration.Divisibility,
                         configuration.SmartContractAddress))
-                : "The selected payment link format is invalid.";
+                : null;
             if (validationError is not null)
             {
-                TempData.SetStatusMessageModel(new StatusMessageModel
-                {
-                    Message = validationError,
-                    Severity = StatusMessageModel.StatusSeverity.Error
-                });
-                return RedirectToAction(nameof(GetStoreTronUSDtLikePaymentMethod),
-                    new { storeId = store.Id, paymentMethodId });
+                ModelState.AddModelError(
+                    viewModel.PaymentLinkFormat == USDtPaymentLinkFormat.Custom
+                        ? nameof(viewModel.PaymentLinkTemplate)
+                        : nameof(viewModel.PaymentLinkFormat), validationError);
+            }
+            if (!ModelState.IsValid)
+            {
+                // Checkbox helpers cannot render a malformed Boolean. Keep its
+                // validation error, but display the stored Enabled value.
+                if (ModelState.TryGetValue(nameof(viewModel.Enabled), out var enabledState) && enabledState.Errors.Count > 0)
+                    enabledState.RawValue = null;
+                return await GetStoreTronUSDtLikePaymentMethod(paymentMethodId);
             }
 
             var messages = new List<string>();
