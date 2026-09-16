@@ -117,7 +117,7 @@ public class UIEVMUSDtLikeStoreController(
                     Available = !reservedAddresses.Contains(s, StringComparer.OrdinalIgnoreCase),
                     Balance = balances.Single(x => x.Item1 == s).Item2 == null
                         ? "N/A"
-                        : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae"),
+                        : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae", divisibility: config.Divisibility),
                     Value = s
                 }).ToArray()
         });
