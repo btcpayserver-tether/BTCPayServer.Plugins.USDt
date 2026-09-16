@@ -20,7 +20,7 @@
 {
     @if (hasTron)
     {
-        <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+        <li class="py-1 px-3" permission="@Policies.CanModifyServerSettings">
             <a asp-controller="UITronUSDtLikeServer" asp-action="GetServerConfig"
                class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), "TronServer")">USD&#x20AE; on TRON</a>
         </li>
@@ -31,7 +31,7 @@
         foreach (var item in USDtPluginConfiguration.EVMUSDtLikeConfigurationItems)
         {
             var activeKey = $"EVM-{item.Key}";
-            <li class="nav-item nav-item-sub" permission="@Policies.CanModifyServerSettings">
+            <li class="py-1 px-3" permission="@Policies.CanModifyServerSettings">
                 <a asp-controller="UIEVMUSDtLikeServer" asp-action="GetServerConfig"
                    asp-route-paymentMethodId="@item.Key"
                    class="nav-link @ViewData.ActivePageClass(USDtPlugin.PluginNavKey, typeof(ServerNavPages).ToString(), activeKey)">USD&#x20AE; on @item.Value.Chain</a>
