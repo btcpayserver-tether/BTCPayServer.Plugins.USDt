@@ -31,7 +31,6 @@ public class UIEVMUSDtLikeStoreController(
     EVMUSDtRPCProvider evmUsdTRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     USDtTrackedInvoiceProvider trackedInvoiceProvider,
-    DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration,
     EventAggregator eventAggregator) : Controller
 {
@@ -95,6 +94,7 @@ public class UIEVMUSDtLikeStoreController(
         var balances = await evmUsdTRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
             await EVMUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
+        var balanceFormat = "#,0." + new string('#', config.Divisibility);
 
         return View(new EditEVMUSDtPaymentMethodViewModel
         {
@@ -117,7 +117,8 @@ public class UIEVMUSDtLikeStoreController(
                     Available = !reservedAddresses.Contains(s, StringComparer.OrdinalIgnoreCase),
                     Balance = balances.Single(x => x.Item1 == s).Item2 == null
                         ? "N/A"
-                        : displayFormatter.Currency(balances.Single(x => x.Item1 == s).Item2!.Value, "USD\u20ae", divisibility: config.Divisibility),
+                        : balances.Single(x => x.Item1 == s).Item2!.Value.ToString(balanceFormat, CultureInfo.InvariantCulture)
+                          + " " + config.CurrencyDisplayName,
                     Value = s
                 }).ToArray()
         });
