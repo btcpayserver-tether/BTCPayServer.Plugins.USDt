@@ -117,7 +117,7 @@ public class UITronUSDtLikeStoreController(
                     Available = reservedAddresses.Contains(s) == false,
                     Balance = balance == null
                         ? "N/A"
-                        : displayFormatter.Currency(balance.Value, "USD\u20ae"),
+                        : displayFormatter.Currency(balance.Value, "USD\u20ae", divisibility: configuration.Divisibility),
                     Value = s
                 };
             }).ToArray()
