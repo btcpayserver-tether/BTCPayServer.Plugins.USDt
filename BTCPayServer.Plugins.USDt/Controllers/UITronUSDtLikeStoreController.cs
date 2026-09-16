@@ -31,7 +31,6 @@ public class UITronUSDtLikeStoreController(
     TronUSDtRPCProvider tronUSDtRpcProvider,
     PaymentMethodHandlerDictionary handlers,
     USDtTrackedInvoiceProvider trackedInvoiceProvider,
-    DisplayFormatter displayFormatter,
     USDtPluginConfiguration pluginConfiguration,
     EventAggregator eventAggregator) : Controller
 {
@@ -94,6 +93,7 @@ public class UITronUSDtLikeStoreController(
         var balances = await tronUSDtRpcProvider.GetBalances(paymentMethodId, addresses);
         var reservedAddresses =
             await TronUSDtPaymentMethodConfig.GetReservedAddresses(paymentMethodId, trackedInvoiceProvider);
+        var balanceFormat = "#,0." + new string('#', configuration.Divisibility);
 
         return View(new EditTronUSDtPaymentMethodViewModel
         {
@@ -117,7 +117,8 @@ public class UITronUSDtLikeStoreController(
                     Available = reservedAddresses.Contains(s) == false,
                     Balance = balance == null
                         ? "N/A"
-                        : displayFormatter.Currency(balance.Value, "USD\u20ae", divisibility: configuration.Divisibility),
+                        : balance.Value.ToString(balanceFormat, CultureInfo.InvariantCulture)
+                          + " " + configuration.CurrencyDisplayName,
                     Value = s
                 };
             }).ToArray()
