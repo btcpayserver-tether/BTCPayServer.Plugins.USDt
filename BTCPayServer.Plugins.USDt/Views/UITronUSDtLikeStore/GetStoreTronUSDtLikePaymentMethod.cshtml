@@ -3,14 +3,13 @@
 @using BTCPayServer.Client
 @using BTCPayServer.Plugins.USDt
 @using BTCPayServer.Plugins.USDt.Services.Payments
-@using BTCPayServer.Views.Stores
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
 @model BTCPayServer.Plugins.USDt.Controllers.ViewModels.EditTronUSDtPaymentMethodViewModel;
 
 @{
     // ReSharper disable once Razor.LayoutNotResolved
-    ViewData.SetActivePage(USDtPlugin.PluginNavKey, typeof(StoreNavPages).ToString(), "USD\u20ae on TRON payment settings", "TronStore");
+    ViewData.SetActivePage(USDtPlugin.PluginNavKey, USDtPlugin.PluginNavKey, "USD\u20ae on TRON payment settings", "TronStore");
 }
 <h3 class="mb-3">USD₮ on TRON payment settings</h3>
 <div class="row">
