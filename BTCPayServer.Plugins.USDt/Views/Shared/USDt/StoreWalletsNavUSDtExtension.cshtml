@@ -53,13 +53,22 @@
     }
 
     var parentStatus = !anyEnabled ? "pending" : anyRed ? "disabled" : "enabled";
+    var activeController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var activeMethod = ViewContext.RouteData.Values["paymentMethodId"]?.ToString();
+    var expanded = !string.IsNullOrEmpty(storeId) &&
+        ((string.Equals(activeController, "UITronUSDtLikeStore", StringComparison.OrdinalIgnoreCase) &&
+          USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Keys.Any(pmi => pmi.ToString() == activeMethod)) ||
+         (string.Equals(activeController, "UIEVMUSDtLikeStore", StringComparison.OrdinalIgnoreCase) &&
+          USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.Keys.Any(pmi => pmi.ToString() == activeMethod)));
 
     <li class="nav-item">
-        <span class="nav-link">
+        <a id="Nav-USDt-Toggle" class="nav-link w-100 @(expanded ? "" : "collapsed")" href="#Nav-USDt-Networks"
+           role="button" data-bs-toggle="collapse" aria-expanded="@(expanded ? "true" : "false")" aria-controls="Nav-USDt-Networks">
             <span class="me-2 btcpay-status btcpay-status--@parentStatus"></span>
             <span>USD₮</span>
-        </span>
-    </li>
+            <vc:icon symbol="caret-down" />
+        </a>
+        <ul id="Nav-USDt-Networks" class="navbar-nav collapse @(expanded ? "show" : "")">
 
     @if (hasTron)
     {
@@ -107,4 +116,6 @@
             </li>
         }
     }
+        </ul>
+    </li>
 }
