@@ -22,100 +22,59 @@
 @if (SignInManager.IsSignedIn(User) && (hasTron || hasEvm))
 {
     var store = Context.GetStoreData();
-    var anyEnabled = false;
-    var anyRed = false;
-
+    var networks = new List<(PaymentMethodId PaymentMethodId, bool Enabled, bool Available, string Name, string Controller, string Action)>();
     if (hasTron)
     {
-        var tronVm = UITronUSDtLikeStore.GetVM(store);
-        foreach (var item in tronVm.Items)
+        foreach (var item in UITronUSDtLikeStore.GetVM(store).Items)
         {
-            if (item.Enabled)
-            {
-                anyEnabled = true;
-                if (!TronUSDtRPCProvider.IsAvailable(item.PaymentMethodId))
-                    anyRed = true;
-            }
+            networks.Add((item.PaymentMethodId, item.Enabled, TronUSDtRPCProvider.IsAvailable(item.PaymentMethodId),
+                "TRON", "UITronUSDtLikeStore", "GetStoreTronUSDtLikePaymentMethod"));
         }
     }
     if (hasEvm)
     {
-        var evmVm = UIEvmUsdTLikeStore.GetVM(store);
-        foreach (var item in evmVm.Items)
+        foreach (var item in UIEvmUsdTLikeStore.GetVM(store).Items)
         {
-            if (item.Enabled)
-            {
-                anyEnabled = true;
-                if (!EvmUsdTRpcProvider.IsAvailable(item.PaymentMethodId))
-                    anyRed = true;
-            }
+            var chainName = USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(item.PaymentMethodId, out var config) ? config.Chain : item.DisplayName;
+            networks.Add((item.PaymentMethodId, item.Enabled, EvmUsdTRpcProvider.IsAvailable(item.PaymentMethodId),
+                chainName, "UIEVMUSDtLikeStore", "GetStoreEVMUSDtLikePaymentMethod"));
         }
     }
 
-    var parentStatus = !anyEnabled ? "pending" : anyRed ? "disabled" : "enabled";
+    var parentStatus = !networks.Any(network => network.Enabled) ? "pending"
+        : networks.Any(network => network.Enabled && !network.Available) ? "disabled" : "enabled";
+    var defaultNetwork = networks.FirstOrDefault(network => network.Enabled, networks[0]);
     var activeController = ViewContext.RouteData.Values["controller"]?.ToString();
     var activeMethod = ViewContext.RouteData.Values["paymentMethodId"]?.ToString();
-    var expanded = !string.IsNullOrEmpty(storeId) &&
-        ((string.Equals(activeController, "UITronUSDtLikeStore", StringComparison.OrdinalIgnoreCase) &&
-          USDtPluginConfiguration.TronUSDtLikeConfigurationItems.Keys.Any(pmi => pmi.ToString() == activeMethod)) ||
-         (string.Equals(activeController, "UIEVMUSDtLikeStore", StringComparison.OrdinalIgnoreCase) &&
-          USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.Keys.Any(pmi => pmi.ToString() == activeMethod)));
+    var active = !string.IsNullOrEmpty(storeId) && networks.Any(network =>
+        string.Equals(activeController, network.Controller, StringComparison.OrdinalIgnoreCase) &&
+        network.PaymentMethodId.ToString() == activeMethod);
 
     <li class="nav-item">
-        <a id="Nav-USDt-Toggle" class="nav-link w-100 @(expanded ? "" : "collapsed")" href="#Nav-USDt-Networks"
-           role="button" data-bs-toggle="collapse" aria-expanded="@(expanded ? "true" : "false")" aria-controls="Nav-USDt-Networks">
+        <a id="Nav-USDt" class="nav-link @(active ? "active" : "")"
+           asp-controller="@defaultNetwork.Controller" asp-action="@defaultNetwork.Action"
+           asp-route-storeId="@storeId" asp-route-paymentMethodId="@defaultNetwork.PaymentMethodId">
             <span class="me-2 btcpay-status btcpay-status--@parentStatus"></span>
             <span>USD₮</span>
-            <vc:icon symbol="caret-down" />
         </a>
-        <ul id="Nav-USDt-Networks" class="navbar-nav collapse @(expanded ? "show" : "")">
-
-    @if (hasTron)
-    {
-        var tronResult = UITronUSDtLikeStore.GetVM(store);
-
-        foreach (var item in tronResult.Items)
+        @if (active)
         {
-            var isAvailable = TronUSDtRPCProvider.IsAvailable(item.PaymentMethodId);
-            var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
-                           nameof(UITronUSDtLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
-                           ViewContext.RouteData.Values.TryGetValue("paymentMethodId", out var paymentMethodId) && paymentMethodId is not null && new PaymentMethodId((string)paymentMethodId) == item.PaymentMethodId;
-            <li class="nav-item nav-item-sub">
-                <a class="nav-link @(isActive ? "active" : "")"
-                   asp-route-paymentMethodId="@item.PaymentMethodId"
-                   asp-route-storeId="@storeId"
-                   asp-action="GetStoreTronUSDtLikePaymentMethod"
-                   asp-controller="UITronUSDtLikeStore">
-                    <span class="me-2 btcpay-status btcpay-status--@(item.Enabled ? isAvailable ? "enabled" : "disabled" : "pending")"></span>
-                    <span>TRON</span>
-                </a>
-            </li>
+            <ul id="Nav-USDt-Networks" class="navbar-nav">
+                @foreach (var network in networks)
+                {
+                    var networkActive = string.Equals(activeController, network.Controller, StringComparison.OrdinalIgnoreCase) &&
+                        network.PaymentMethodId.ToString() == activeMethod;
+                    var status = !network.Enabled ? "pending" : network.Available ? "enabled" : "disabled";
+                    <li class="nav-item nav-item-sub">
+                        <a class="nav-link @(networkActive ? "active" : "")"
+                           asp-controller="@network.Controller" asp-action="@network.Action"
+                           asp-route-storeId="@storeId" asp-route-paymentMethodId="@network.PaymentMethodId">
+                            <span class="me-2 btcpay-status btcpay-status--@status"></span>
+                            <span>@network.Name</span>
+                        </a>
+                    </li>
+                }
+            </ul>
         }
-    }
-
-    @if (hasEvm)
-    {
-        var evmResult = UIEvmUsdTLikeStore.GetVM(store);
-
-        foreach (var item in evmResult.Items)
-        {
-            var chainName = USDtPluginConfiguration.EVMUSDtLikeConfigurationItems.TryGetValue(item.PaymentMethodId, out var evmConfig) ? evmConfig.Chain : item.DisplayName;
-            var isAvailable = EvmUsdTRpcProvider.IsAvailable(item.PaymentMethodId);
-            var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
-                           nameof(UIEVMUSDtLikeStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
-                           ViewContext.RouteData.Values.TryGetValue("paymentMethodId", out var paymentMethodId) && paymentMethodId is not null && new PaymentMethodId((string)paymentMethodId) == item.PaymentMethodId;
-            <li class="nav-item nav-item-sub">
-                <a class="nav-link @(isActive ? "active" : "")"
-                   asp-route-paymentMethodId="@item.PaymentMethodId"
-                   asp-route-storeId="@storeId"
-                   asp-action="GetStoreEVMUSDtLikePaymentMethod"
-                   asp-controller="UIEVMUSDtLikeStore">
-                    <span class="me-2 btcpay-status btcpay-status--@(item.Enabled ? isAvailable ? "enabled" : "disabled" : "pending")"></span>
-                    <span>@chainName</span>
-                </a>
-            </li>
-        }
-    }
-        </ul>
     </li>
 }
