@@ -69,7 +69,7 @@ public class AddressPoolTests
         Assert.True(config.Activated);
 
         var cleared = new PaymentMethodConfigValidationContext(null!, new ModelStateDictionary(),
-            new JObject { ["addresses"] = new JArray() }, new ClaimsPrincipal(), context.Config);
+            new JObject { ["addresses"] = new JArray() }, new ClaimsPrincipal(), context.Config, new BTCPayServer.Data.StoreData());
         await handler.ValidatePaymentMethodConfig(cleared);
         Assert.True(cleared.ModelState.IsValid);
         var empty = Assert.IsAssignableFrom<USDtPaymentMethodConfig>(handler.ParsePaymentMethodConfig(cleared.Config));
@@ -178,7 +178,7 @@ public class AddressPoolTests
     }
 
     private static PaymentMethodConfigValidationContext ValidationContext(JToken addresses) =>
-        new(null!, new ModelStateDictionary(), new JObject { ["addresses"] = addresses }, new ClaimsPrincipal(), null);
+        new(null!, new ModelStateDictionary(), new JObject { ["addresses"] = addresses }, new ClaimsPrincipal(), null, new BTCPayServer.Data.StoreData());
 
     private static IPaymentMethodHandler Handler(bool evm)
     {

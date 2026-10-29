@@ -537,6 +537,7 @@ public class StorePaymentMethodFormTests
                 services.AddScoped<Safe>();
                 services.AddScoped<BTCPayServer.Security.ContentSecurityPolicies>();
                 services.AddSingleton<HtmlSanitizer>();
+                services.AddSingleton(new BTCPayServer.Abstractions.Services.RichTextHtmlSanitizer(new HtmlSanitizer())); // Safe needs it since BTCPay 2.4.7
                 services.AddLocalization();
                 services.AddCors(options => options.AddPolicy(CorsPolicies.All,
                     policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
