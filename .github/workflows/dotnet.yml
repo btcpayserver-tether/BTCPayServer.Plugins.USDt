@@ -27,4 +27,4 @@ jobs:
     - name: Build
       run: dotnet build -p:StaticWebAssetsEnabled=false
     - name: Test
-      run: dotnet test --no-build --verbosity normal --settings BTCPayServer.Plugins.USDt.Tests/BTCPayServer.Plugins.USDt.Tests.runsettings BTCPayServer.Plugins.USDt.Tests/BTCPayServer.Plugins.USDt.Tests.csproj
+      run: dotnet test --no-build --verbosity normal --project BTCPayServer.Plugins.USDt.Tests/BTCPayServer.Plugins.USDt.Tests.csproj

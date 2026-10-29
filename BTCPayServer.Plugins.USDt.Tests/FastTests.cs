@@ -1028,7 +1028,8 @@ public class FastTests : UnitTestBase
             new ModelStateDictionary(),
             config,
             new ClaimsPrincipal(),
-            previousConfig);
+            previousConfig,
+            new BTCPayServer.Data.StoreData());
     }
 
     private static EVMUSDtLikeConfigurationItem CreateEvmConfiguration()
