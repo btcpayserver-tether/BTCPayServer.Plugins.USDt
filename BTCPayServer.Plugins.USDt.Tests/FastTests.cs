@@ -576,6 +576,29 @@ public class FastTests : UnitTestBase
         Assert.Equal(97, evmConfigurations[Constants.BscTestnetChainName].ChainId);
     }
 
+    [Theory]
+    [InlineData("Main", "USD₮ on Tron", Constants.EthereumChainName, "USD₮ on Ethereum", Constants.PolygonChainName, "USD₮ on Polygon", Constants.BscChainName, "USD₮ on BSC")]
+    [InlineData("Test", "USD₮ on Tron Testnet", Constants.SepoliaChainName, "USD₮ on Sepolia", Constants.AmoyChainName, "USD₮ on Amoy", Constants.BscTestnetChainName, "USD₮ on BSC Testnet")]
+    public void CheckoutDisplayNamesUseNormalCasingAndKeepChainIdentifiers(
+        string networkName, string tronName, string chainA, string nameA, string chainB, string nameB, string chainC, string nameC)
+    {
+        var networkProvider = new NBXplorerNetworkProvider(networkName == "Main" ? ChainName.Mainnet : ChainName.Testnet);
+        var configuration = new ConfigurationBuilder().Build();
+
+        Assert.Equal(tronName,
+            USDtConfigurationProvider.GetTronUSDtLikeDefaultConfigurationItem(networkProvider, configuration).DisplayName);
+
+        var evmConfigurations =
+            USDtConfigurationProvider.GetEVMUSDtLikeDefaultConfigurationItems(networkProvider, configuration)
+                .Values
+                .ToDictionary(config => config.Chain);
+
+        Assert.Equal(nameA, evmConfigurations[chainA].DisplayName);
+        Assert.Equal(nameB, evmConfigurations[chainB].DisplayName);
+        Assert.Equal(nameC, evmConfigurations[chainC].DisplayName);
+        Assert.Equal($"USDT-{chainA}", evmConfigurations[chainA].GetPaymentMethodId().ToString());
+    }
+
     [Fact]
     public void UsdtPaymentMethodConfigDoesNotActivateExcludedEmptyConfigs()
     {

@@ -33,7 +33,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.TronChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Tron",
                 CryptoImagePath = logo,
                 DefaultRateRules =
                 [
@@ -50,7 +50,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.TronChainName} Testnet",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Tron Testnet",
                 CryptoImagePath = logo,
                 DefaultRateRules =
                 [
@@ -168,7 +168,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.EthereumChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Ethereum",
                 CryptoImagePath = ethLogo,
                 DefaultRateRules =
                 [
@@ -186,7 +186,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.SepoliaChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Sepolia",
                 CryptoImagePath = ethLogo,
                 DefaultRateRules =
                 [
@@ -221,7 +221,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.PolygonChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Polygon",
                 CryptoImagePath = polygonLogo,
                 DefaultRateRules =
                 [
@@ -240,7 +240,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.AmoyChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on Amoy",
                 CryptoImagePath = polygonLogo,
                 DefaultRateRules =
                 [
@@ -268,7 +268,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.BscChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on BSC",
                 CryptoImagePath = bscLogo,
                 DefaultRateRules =
                 [
@@ -287,7 +287,7 @@ public static class USDtConfigurationProvider
             {
                 Currency = Constants.USDtCurrency,
                 CurrencyDisplayName = Constants.USDtCurrencyDisplayName,
-                DisplayName = $"{Constants.USDtCurrencyDisplayName} on {Constants.BscTestnetChainName}",
+                DisplayName = $"{Constants.USDtCurrencyDisplayName} on BSC Testnet",
                 CryptoImagePath = bscLogo,
                 DefaultRateRules =
                 [
