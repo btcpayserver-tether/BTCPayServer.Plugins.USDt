@@ -88,38 +88,31 @@ public class EVMUSDtListener(
         var transferEvent = web3Client.Eth.GetEvent<TransferEventDTO>(configuration.SmartContractAddress.ToLowerInvariant());
         List<EventLog<TransferEventDTO>> changes = [];
         var destinationBatches = BatchDestinationAddresses(invoicesPerAddress.Keys);
-        var tries = 0;
-        do
+        // A successful empty result is normal; retrying it makes fast chains fall behind.
+        // The caller already stays behind the head and retries RPC failures without advancing.
+        foreach (var destinationBatch in destinationBatches)
         {
-            changes.Clear();
-            foreach (var destinationBatch in destinationBatches)
+            stoppingToken.ThrowIfCancellationRequested();
+            var filter = transferEvent.CreateFilterInput(
+                (object[]?)null,
+                (object[])destinationBatch,
+                new BlockParameter(block.Number),
+                new BlockParameter(block.Number));
+            List<EventLog<TransferEventDTO>> part;
+            try
             {
-                var filter = transferEvent.CreateFilterInput(
-                    (object[]?)null,
-                    (object[])destinationBatch,
-                    new BlockParameter(block.Number),
-                    new BlockParameter(block.Number));
-                List<EventLog<TransferEventDTO>> part;
-                try
-                {
-                    part = await transferEvent.GetAllChangesAsync(filter);
-                }
-                catch (RpcResponseException e) when (IsBlockRangeBeyondCurrentHeadError(e))
-                {
-                    throw new USDtListenerTransientException(
-                        $"eth_getLogs is not ready for {paymentMethodId} block {(long)block.Number.Value}",
-                        e);
-                }
-
-                if (part != null && part.Count != 0)
-                    changes.AddRange(part);
+                part = await transferEvent.GetAllChangesAsync(filter);
+            }
+            catch (RpcResponseException e) when (IsBlockRangeBeyondCurrentHeadError(e))
+            {
+                throw new USDtListenerTransientException(
+                    $"eth_getLogs is not ready for {paymentMethodId} block {(long)block.Number.Value}",
+                    e);
             }
 
-            if (changes.Count != 0)
-                break;
-
-            await Task.Delay(250, stoppingToken);
-        } while (tries++ < 3);
+            if (part != null && part.Count != 0)
+                changes.AddRange(part);
+        }
 
         var matchedChanges = changes
             .Where(change => !change.Log.Removed &&

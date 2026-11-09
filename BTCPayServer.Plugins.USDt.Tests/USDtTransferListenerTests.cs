@@ -118,6 +118,49 @@ public class USDtTransferListenerTests
     }
 
     [Theory]
+    [InlineData("ETHEREUM", 1)]
+    [InlineData("POLYGON", 20)]
+    [InlineData("BSC", 21)]
+    public async Task EmptyEvmBlocksQueryEachDestinationBatchOnce(string chain, int addressCount)
+    {
+        using var fixture = new Fixture(chain);
+        fixture.TrackExpiredInvoice([], []);
+        var invoices = Enumerable.Range(1, addressCount)
+            .Select(index => fixture.Invoice($"invoice-{index}", [], "0x" + index.ToString("x").PadLeft(40, '0')))
+            .ToArray();
+
+        Assert.Empty(await fixture.ReadIds(invoices));
+        Assert.Equal((addressCount + 19) / 20, fixture.Rpc.Requests.Count);
+        Assert.All(fixture.Rpc.Requests, request =>
+        {
+            Assert.Equal("0x64", request["params"]![0]!.Value<string>("fromBlock"));
+            Assert.Equal("0x64", request["params"]![0]!.Value<string>("toBlock"));
+        });
+        Assert.Empty(fixture.Source.HistoryQueries);
+    }
+
+    [Theory]
+    [InlineData("block range extends beyond current head block for eth_getLogs", true)]
+    [InlineData("upstream unavailable", false)]
+    public async Task EvmLogErrorsAreNotTreatedAsEmptyBlocks(string message, bool transient)
+    {
+        using var fixture = new Fixture("BSC");
+        fixture.TrackExpiredInvoice([], []);
+        fixture.Rpc.Error = new JObject { ["code"] = -32000, ["message"] = message };
+
+        if (transient)
+            await Assert.ThrowsAsync<USDtListenerTransientException>(() => fixture.ReadIds());
+        else
+            await Assert.ThrowsAsync<Nethereum.JsonRpc.Client.RpcResponseException>(() => fixture.ReadIds());
+        Assert.Single(fixture.Rpc.Requests);
+        Assert.Empty(fixture.Source.HistoryQueries);
+
+        fixture.Rpc.Error = null;
+        fixture.Rpc.Logs.Add(fixture.Log(7));
+        Assert.Equal($"{LegacyId}-log-7", Assert.Single(await fixture.ReadIds()));
+    }
+
+    [Theory]
     [InlineData("ETHEREUM")]
     [InlineData("TRON")]
     public async Task MissingPaymentHistoryStopsReplay(string chain)
@@ -419,15 +462,18 @@ public class USDtTransferListenerTests
     {
         public JArray Logs { get; } = [];
         public List<JObject> Requests { get; } = [];
+        public JObject? Error { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var input = JObject.Parse(await request.Content!.ReadAsStringAsync(ct));
             Assert.Equal("eth_getLogs", input.Value<string>("method"));
             Requests.Add(input);
+            var response = new JObject { ["jsonrpc"] = "2.0", ["id"] = input["id"] };
+            response[Error is null ? "result" : "error"] = Error ?? (JToken)Logs;
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(new JObject { ["jsonrpc"] = "2.0", ["id"] = input["id"], ["result"] = Logs }.ToString())
+                Content = new StringContent(response.ToString())
             };
         }
     }
